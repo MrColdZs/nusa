@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: http://127.0.0.1:5560 https:; media-src 'self' https://cdn.islamic.network; connect-src 'self' http://127.0.0.1:5560 https://api.open-meteo.com; style-src 'self' 'unsafe-inline'; font-src 'self'">
+  <title>Nusa</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="island" class="island" data-mode="lip">
+    <div class="tint"></div>
+    <div class="content" id="content"></div>
+  </div>
+  <audio id="adhan" src="assets/adhan.mp3" preload="auto"></audio>
+  <audio id="recite"></audio>
+  <script src="lib/prayer.js"></script>
+  <script src="lib/tasks.js"></script>
+  <script src="icons.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

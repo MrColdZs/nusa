@@ -1,0 +1,14 @@
+Nusa — Dynamic Island for your desktop
+Copyright (c) 2026 Quraish Rahmatulloh. All rights reserved.
+
+This is personal software, provided as is, without warranty of any kind.
+
+Nusa includes third-party content:
+- Quran text: Tanzil Project (tanzil.net). The text is unmodified.
+- Indonesian translation: Ministry of Religious Affairs of Indonesia, via Tanzil.
+- English translation: Saheeh International, via Tanzil.
+- Adhan recording: "The Adhan" by Aaqib Azeez, Wikimedia Commons, CC BY-SA 4.0.
+- Fonts: Scheherazade New (SIL International) and Amiri Quran (Khaled Hosny),
+  SIL Open Font License 1.1.
+- Weather data: Open-Meteo (open-meteo.com), CC BY 4.0.
+- Quran recitation audio is streamed from cdn.islamic.network.

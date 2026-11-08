@@ -1,0 +1,73 @@
+{
+  "name": "nusa",
+  "productName": "Nusa",
+  "version": "1.0.0",
+  "description": "Dynamic Island for Windows & Linux",
+  "author": "Quraish Rahmatulloh",
+  "license": "UNLICENSED",
+  "main": "main.js",
+  "scripts": {
+    "assets": "node scripts/assets.js",
+    "start": "npm run assets && electron .",
+    "test": "node test/run.js",
+    "dist:win": "npm run assets && electron-builder --win nsis --x64",
+    "dist:linux": "npm run assets && electron-builder --linux AppImage deb --x64"
+  },
+  "devDependencies": {
+    "electron": "45.1.0",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "site.faquloh.nusa",
+    "productName": "Nusa",
+    "copyright": "\u00a9 2026 Quraish Rahmatulloh",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "media.js",
+      "app/**/*",
+      "build/tray.png"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "runAfterFinish": true,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerSidebar": "build/installerSidebar.bmp",
+      "uninstallerSidebar": "build/installerSidebar.bmp",
+      "license": "build/license.txt",
+      "shortcutName": "Nusa",
+      "include": "build/installer.nsh",
+      "artifactName": "Nusa-Setup-${version}.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "build/icon.png",
+      "category": "Utility",
+      "synopsis": "Dynamic Island for your desktop",
+      "maintainer": "Quraish Rahmatulloh <258376073+quraishrahmatulloh-source@users.noreply.github.com>",
+      "artifactName": "Nusa-${version}-${arch}.${ext}"
+    },
+    "deb": {
+      "recommends": [
+        "playerctl"
+      ]
+    }
+  },
+  "homepage": "https://github.com/quraishrahmatulloh-source/nusa"
+}

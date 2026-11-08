@@ -1,0 +1,47 @@
+// Ikon garis 24×24 buatan sendiri (Windows & Linux nggak punya SF Symbols).
+(function () {
+  const s = (body, fill) => `<svg viewBox="0 0 24 24" class="ic${fill ? ' fl' : ''}" aria-hidden="true">${body}</svg>`;
+  const SUN = '<circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/>';
+  const CLOUD = '<path d="M7 18.5h10a4 4 0 0 0 .6-7.95A5.5 5.5 0 0 0 6.9 9.6 4.5 4.5 0 0 0 7 18.5z"/>';
+  window.IC = {
+    home: s('<rect x="4" y="4" width="7" height="7" rx="1.6"/><rect x="13" y="4" width="7" height="7" rx="1.6"/><rect x="4" y="13" width="7" height="7" rx="1.6"/><rect x="13" y="13" width="7" height="7" rx="1.6"/>', true),
+    music: s('<path d="M4 6h10M4 11h10M4 16h6"/><path d="M18 5v10.5"/><circle cx="16" cy="16.5" r="2.5"/>'),
+    tasks: s('<path d="M4.5 6.5l1.5 1.5 3-3M4.5 15.5l1.5 1.5 3-3"/><path d="M12 7h8M12 16h8"/>'),
+    moon: s('<path d="M19.5 14.2A7.5 7.5 0 1 1 9.8 4.5a6 6 0 0 0 9.7 9.7z"/><path d="M17 3.5v3M15.5 5h3"/>'),
+    book: s('<path d="M5 4.5h10.5A2.5 2.5 0 0 1 18 7v12.5H7.5A2.5 2.5 0 0 1 5 17z"/><path d="M5 17a2.5 2.5 0 0 1 2.5-2.5H18"/>'),
+    clips: s('<rect x="7" y="4" width="11" height="14" rx="2"/><path d="M5 7.5V19a1.5 1.5 0 0 0 1.5 1.5H15"/>'),
+    play: s('<path d="M7.5 4.8v14.4a1 1 0 0 0 1.5.86l11.6-7.2a1 1 0 0 0 0-1.72L9 3.94a1 1 0 0 0-1.5.86z"/>', true),
+    pause: s('<rect x="6" y="4.5" width="4.2" height="15" rx="1.2"/><rect x="13.8" y="4.5" width="4.2" height="15" rx="1.2"/>', true),
+    next: s('<path d="M3 6.2v11.6a1 1 0 0 0 1.6.8L12 13v4.8a1 1 0 0 0 1.6.8l7.8-5.8a1 1 0 0 0 0-1.6L13.6 5.4a1 1 0 0 0-1.6.8V11L4.6 5.4a1 1 0 0 0-1.6.8z"/>', true),
+    prev: s('<path d="M3 6.2v11.6a1 1 0 0 0 1.6.8L12 13v4.8a1 1 0 0 0 1.6.8l7.8-5.8a1 1 0 0 0 0-1.6L13.6 5.4a1 1 0 0 0-1.6.8V11L4.6 5.4a1 1 0 0 0-1.6.8z" transform="matrix(-1 0 0 1 24 0)"/>', true),
+    timer: s('<circle cx="12" cy="13" r="7.5"/><path d="M12 9v4l2.5 1.5M10 2.5h4"/>'),
+    bell: s('<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 1.5h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/>'),
+    check: s('<path d="M5 12.5l4.5 4.5L19 7.5"/>'),
+    x: s('<path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/>'),
+    search: s('<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/>'),
+    plus: s('<path d="M12 5v14M5 12h14"/>'),
+    target: s('<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" />'),
+    cup: s('<path d="M5 9h11v5a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5z"/><path d="M16 10.5h1.5a2.5 2.5 0 0 1 0 5H16M8 3.5v2.5M11 3.5v2.5"/>'),
+    lock: s('<rect x="5.5" y="10.5" width="13" height="10" rx="2"/><path d="M8.5 10.5V7.5a3.5 3.5 0 0 1 7 0v3"/>'),
+    unlock: s('<rect x="5.5" y="10.5" width="13" height="10" rx="2"/><path d="M8.5 10.5V7.5a3.5 3.5 0 0 1 6.8-1.2"/>'),
+    gear: s('<circle cx="12" cy="12" r="3"/><path d="M12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M5.6 18.4l1.6-1.6M16.8 7.2l1.6-1.6"/>'),
+    pin: s('<path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/>'),
+    north: s('<path d="M12 3l6.5 17L12 16l-6.5 4z"/>', true),
+    bookmark: s('<path d="M7 3.5h10v17l-5-3.5-5 3.5z"/>', true),
+    speaker: s('<path d="M11 5L6.5 9H3.5v6h3L11 19z"/><path d="M15.5 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/>'),
+    chevron: s('<path d="M7 10l5 5 5-5"/>'),
+    left: s('<path d="M15 6l-6 6 6 6"/>'),
+    right: s('<path d="M9 6l6 6-6 6"/>'),
+    stop: s('<rect x="6" y="6" width="12" height="12" rx="2"/>', true),
+    umbrella: s('<path d="M3 12a9 9 0 0 1 18 0z"/><path d="M12 12v6.5a2 2 0 0 1-4 0"/>'),
+    bolt: s('<path d="M13 2.5L5 13.5h6l-1 8 8-11h-6z"/>', true),
+    clock: s('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>'),
+    wave: s('<path d="M4 10v4M8 6.5v11M12 3.5v17M16 7.5v9M20 10v4"/>'),
+    sun: s(SUN), cloud: s(CLOUD),
+    cloudSun: s('<path d="M8.5 8.2A3.5 3.5 0 1 1 14.6 6"/><path d="M8.5 2.8v1.4M3.6 7.7H5M4.9 4.1l1 1"/>' + CLOUD.replace('M7 18.5', 'M8 19.5').replace('a4 4 0 0 0 .6-7.95', 'a3.6 3.6 0 0 0 .6-7.15')),
+    rain: s(CLOUD.replace('18.5', '15') + '<path d="M8.5 18l-1 2.5M12.5 18l-1 2.5M16.5 18l-1 2.5"/>'.replace(/a4 4/g, 'a4 4')),
+    storm: s(CLOUD.replace('18.5', '15') + '<path d="M12.5 15.5l-2 3.5h3l-2 3.5"/>'),
+    fog: s('<path d="M4 9h16M6 13h12M4 17h16"/>'),
+    moonStar: s('<path d="M19.5 14.2A7.5 7.5 0 1 1 9.8 4.5a6 6 0 0 0 9.7 9.7z"/>'),
+  };
+})();
