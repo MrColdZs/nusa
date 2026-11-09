@@ -43,5 +43,17 @@
     storm: s(CLOUD.replace('18.5', '15') + '<path d="M12.5 15.5l-2 3.5h3l-2 3.5"/>'),
     fog: s('<path d="M4 9h16M6 13h12M4 17h16"/>'),
     moonStar: s('<path d="M19.5 14.2A7.5 7.5 0 1 1 9.8 4.5a6 6 0 0 0 9.7 9.7z"/>'),
+    tray: s('<path d="M3.5 13.5l2.6-7.3A1.8 1.8 0 0 1 7.8 5h8.4a1.8 1.8 0 0 1 1.7 1.2l2.6 7.3V18a1.5 1.5 0 0 1-1.5 1.5h-14A1.5 1.5 0 0 1 3.5 18z"/><path d="M3.5 13.5h4.8l1.2 2.2h5l1.2-2.2h4.8"/>'),
+    trayIn: s('<path d="M12 3.5v8.5M8.5 8.8L12 12.3l3.5-3.5"/><path d="M3.5 14.5h4.8l1.2 2.2h5l1.2-2.2h4.8V18a1.5 1.5 0 0 1-1.5 1.5h-14A1.5 1.5 0 0 1 3.5 18z"/>'),
+    spk0: s('<path d="M11 5L6.5 9H3.5v6h3L11 19z"/><path d="M15.5 9.5l5 5M20.5 9.5l-5 5"/>'),
+    spk1: s('<path d="M11 5L6.5 9H3.5v6h3L11 19z"/><path d="M15.5 9.5a3.5 3.5 0 0 1 0 5"/>'),
+    spk2: s('<path d="M11 5L6.5 9H3.5v6h3L11 19z"/><path d="M15.5 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/>'),
+    headphones: s('<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3.5" y="14" width="4" height="6.5" rx="1.6"/><rect x="16.5" y="14" width="4" height="6.5" rx="1.6"/>'),
+    video: s('<rect x="3" y="6.5" width="12.5" height="11" rx="2.2"/><path d="M15.5 10.5l5-3v9l-5-3z"/>'),
+    videoOff: s('<rect x="3" y="6.5" width="12.5" height="11" rx="2.2"/><path d="M15.5 10.5l5-3v9l-5-3zM3 3.5l17 17"/>'),
+    calendar: s('<rect x="4" y="5" width="16" height="15" rx="2.2"/><path d="M4 9.5h16M8.5 3v4M15.5 3v4"/>'),
+    plug: s('<path d="M9 3.5v4M15 3.5v4M6.5 7.5h11V11a5.5 5.5 0 0 1-11 0zM12 16.5v4"/>'),
+    battLow: s('<rect x="3" y="7.5" width="16" height="9" rx="2.2"/><path d="M21 10.5v3"/><rect x="5" y="9.5" width="3" height="5" rx="0.8" fill="currentColor" stroke="none"/>'),
+    xCircle: s('<circle cx="12" cy="12" r="9" fill="rgba(0,0,0,.6)" stroke="none"/><path d="M8.8 8.8l6.4 6.4M15.2 8.8l-6.4 6.4" stroke="#fff"/>'),
   };
 })();

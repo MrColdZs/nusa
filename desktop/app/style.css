@@ -31,7 +31,7 @@ input, select { font: inherit; color: #fff; }
 .island {
   position: absolute; top: 0; left: 50%; translate: -50% 0;
   width: var(--w); height: var(--h); background: #000; border-radius: 0 0 var(--r) var(--r);
-  transition: width .42s var(--spring), height .4s var(--soft) .07s, border-radius .4s var(--soft) .07s, box-shadow .3s;
+  transition: width .42s var(--spring), height .4s var(--soft) .07s, border-radius .4s var(--soft) .07s, box-shadow .3s, translate .14s var(--spring);
 }
 .island.closing { transition: width .4s var(--soft) .07s, height .36s var(--soft), border-radius .36s var(--soft), box-shadow .3s; }
 .island::before, .island::after {
@@ -113,6 +113,14 @@ input, select { font: inherit; color: #fff; }
 .ctl button.main { font-size: 19px; }
 .ctl button:hover { background: rgba(255,255,255,.12); }
 .ctl button:active { transform: scale(.86); }
+.np.big { flex: 1; gap: 20px; padding: 0 8px; }
+.np.big .cover { width: 200px; height: 200px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,.45); }
+.np.big b { font-size: 20px; margin-top: 6px; }
+.np.big small { font-size: 13px; }
+.np.big .ctl { margin: 10px 0 10px -8px; gap: 6px; }
+.np.big .ctl button { width: 40px; height: 40px; font-size: 18px; }
+.np.big .ctl button.main { font-size: 24px; }
+.times { display: flex; justify-content: space-between; margin-top: 5px; font-size: 10.5px; color: var(--faint); }
 .bar { height: 3px; border-radius: 3px; background: rgba(255,255,255,.18); overflow: hidden; }
 .bar i { display: block; height: 100%; background: var(--tint, #fff); border-radius: 3px; }
 .agenda { gap: 6px; }
@@ -203,3 +211,81 @@ input, select { font: inherit; color: #fff; }
 .card p { margin: 0; flex: 1; font-size: 11.5px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; white-space: pre-wrap; }
 .card small { font-size: 10px; color: var(--dim); font-weight: 600; }
 .card.ok small { color: var(--green); }
+
+/* ---------- disamain sama versi Mac ---------- */
+/* pop-up volume kecil */
+.vbar { flex: 1; height: 4px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.vbar i { display: block; height: 100%; background: #fff; border-radius: 4px; transition: width .12s; }
+
+/* bar atas: volume & baterai */
+.vol { display: inline-flex; align-items: center; gap: 5px; }
+.vol button { width: 18px; height: 22px; display: grid; place-items: center; color: var(--dim); font-size: 12px; }
+.vol button:hover { color: #fff; }
+.vtrack { position: relative; width: 58px; height: 16px; cursor: pointer; touch-action: none; }
+.vtrack::before { content: ''; position: absolute; left: 0; right: 0; top: 6px; height: 4px; border-radius: 4px; background: rgba(255,255,255,.18); }
+.vtrack i { position: absolute; left: 0; top: 6px; height: 4px; border-radius: 4px; background: #fff; }
+.bicon { position: relative; width: 22px; height: 11px; border: 1.3px solid rgba(255,255,255,.55); border-radius: 3.5px; margin-left: 4px; flex: none; display: grid; place-items: center; }
+.bicon::after { content: ''; position: absolute; right: -3.5px; top: 3px; width: 1.6px; height: 3.5px; border-radius: 1px; background: rgba(255,255,255,.55); }
+.bicon i { position: absolute; left: 1.2px; top: 1.2px; bottom: 1.2px; max-width: calc(100% - 2.4px); border-radius: 1.5px; background: #fff; }
+.bicon.low i { background: var(--late); }
+.bicon.chg i { background: var(--green); }
+.bicon .ic { position: relative; font-size: 9px; color: #fff; filter: drop-shadow(0 0 1px #000); }
+
+/* sampul + ikon app sumber */
+.cwrap { position: relative; flex: none; display: block; line-height: 0; }
+.cwrap[data-act] { cursor: pointer; }
+.cover.empty { display: grid; place-items: center; font-size: 40px; color: var(--dim); background: rgba(255,255,255,.12); }
+.appic { position: absolute; right: -5px; bottom: -5px; width: 30px; height: 30px; filter: drop-shadow(0 1px 3px rgba(0,0,0,.6)); }
+.np.big .appic { width: 40px; height: 40px; right: -7px; bottom: -7px; }
+
+/* progress lagu bisa digeser */
+.bar.seek { position: relative; overflow: visible; cursor: pointer; touch-action: none; transition: height .15s; }
+.bar.seek::before { content: ''; position: absolute; left: 0; right: 0; top: -6px; bottom: -6px; }
+.bar.seek:hover, .bar.seek.drag { height: 6px; }
+
+/* kalender di Home */
+.cal-head { display: flex; align-items: center; gap: 6px; flex: none; }
+.cal-head > b { font-size: 20px; font-weight: 700; width: 44px; flex: none; }
+.day { flex: 1; min-width: 0; min-height: 34px; display: grid; place-content: center; justify-items: center; gap: 1px; border-radius: 8px; transition: background .15s, transform .2s var(--spring); }
+.day:hover { background: rgba(255,255,255,.06); }
+.day:active { transform: scale(.92); }
+.day.on { background: rgba(255,255,255,.11); }
+.day small { font-size: 8.5px; font-weight: 600; color: var(--dim); }
+.day b { font-size: 14px; font-weight: 600; line-height: 1.1; }
+.day.today small { color: #fff; }
+.day.today b { color: #0a85ff; }
+.day.past b { color: var(--dim); }
+.cal-list { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 5px; margin-top: 7px; }
+.cal-list .note .ic { font-size: 15px; }
+.cal-list .note span { font-size: 11.5px; }
+.ev { display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 500; }
+.ev i { width: 3px; height: 13px; border-radius: 2px; flex: none; }
+.ev span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ev em { font-style: normal; font-size: 10.5px; color: var(--dim); white-space: nowrap; }
+.ev.late em { color: var(--late); }
+
+/* cermin kamera */
+.wxcol { position: relative; }
+.mirror-btn { position: absolute; top: 0; right: 0; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; color: rgba(255,255,255,.75); background: rgba(255,255,255,.08); transition: background .15s, transform .2s var(--spring); }
+.mirror-btn:hover { background: rgba(255,255,255,.16); color: #fff; }
+.mirror-btn:active { transform: scale(.88); }
+.mirror-btn.on { top: 6px; right: 6px; background: rgba(0,0,0,.5); }
+#mirror { width: 168px; height: 118px; border-radius: 18px; object-fit: cover; transform: scaleX(-1); background: #111; }
+
+/* Rak (Tray) */
+.drop { flex: 1; display: flex; align-items: center; border: 1.5px dashed rgba(255,255,255,.16); border-radius: 16px; transition: border-color .2s, background .2s; min-width: 0; }
+.drop.on { border-color: rgba(255,255,255,.6); background: rgba(255,255,255,.07); }
+.shelf { flex: 1; min-width: 0; display: flex; gap: 8px; overflow-x: auto; padding: 0 12px; }
+.shelf::-webkit-scrollbar { height: 0; }
+.sitem { position: relative; width: 96px; flex: none; padding: 6px; border-radius: 10px; display: grid; justify-items: center; gap: 4px; cursor: pointer; transition: background .15s; }
+.sitem:hover { background: rgba(255,255,255,.09); }
+.sitem img, .sitem .ph { width: 52px; height: 52px; object-fit: contain; -webkit-user-drag: none; }
+.sitem .ph { display: grid; place-items: center; font-size: 30px; color: var(--dim); }
+.sitem small { font-size: 10.5px; max-width: 84px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.sitem .rm { position: absolute; top: 2px; right: 8px; font-size: 17px; opacity: 0; transition: opacity .15s; }
+.sitem:hover .rm { opacity: 1; }
+.shelf-side { display: flex; flex-direction: column; gap: 6px; padding-right: 10px; flex: none; }
+.sbtn { width: 72px; height: 36px; border-radius: 12px; background: rgba(255,255,255,.1); display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 10.5px; font-weight: 500; transition: background .15s, transform .2s var(--spring); }
+.sbtn:hover { background: rgba(255,255,255,.17); }
+.sbtn:active { transform: scale(.93); }
+.ev.done span, .ev.done em { color: var(--faint); }

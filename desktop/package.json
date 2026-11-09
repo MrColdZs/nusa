@@ -29,6 +29,8 @@
       "main.js",
       "preload.js",
       "media.js",
+      "audio.js",
+      "calendar.js",
       "app/**/*",
       "build/tray.png"
     ],

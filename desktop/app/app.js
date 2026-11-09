@@ -19,8 +19,11 @@ const S = {
   timer: null, focus: null, clips: [], tasks: LS.get('tasks', []),
   place: Prayer.city(LS.get('city', 'Cikarang')), sound: LS.get('sound', 'adzan'), soon: LS.get('soon', true),
   q: { book: null, surah: LS.get('qSurah', 1), mark: LS.get('qMark', null), english: LS.get('qEnglish', false), font: LS.get('qFont', 'Scheherazade New') },
-  reciting: null, music: { queue: [], idx: -1, playing: false, online: true, query: '', results: [], searching: false },
+  reciting: null, music: { queue: [], idx: -1, playing: false, online: false, query: '', results: [], searching: false },
   menu: null, taskText: '', taskPick: null,
+  // Samain versi Mac: volume sistem, Rak (Tray), kalender hari, cermin kamera, geser posisi lagu
+  audio: null, shelf: LS.get('shelf', []), files: {}, dropping: false, calSel: null, mirror: null, scrub: null,
+  cal: { status: 'loading', events: [], at: 0 },
 };
 let flashTimer = null;
 
@@ -47,7 +50,8 @@ function size(p = presentation()) {
     case 'focus': return c(250);
     case 'flash': {
       const k = S.flash.kind;
-      const w = { track: 318, prayer: 318, task: 340, rain: 318, focusEnd: 360, charging: 300 }[k] || 300;
+      if (SMALL_FLASH.includes(k)) return { w: 232, h: 24, r: 9, s: 7 };
+      const w = { track: 318, prayer: 318, task: 340, rain: 318, focusEnd: 360, charging: 300, device: 330 }[k] || 300;
       return { w, h: k === 'charging' ? 58 : 60, r: 20, s: 10 };
     }
     default: {
@@ -68,7 +72,7 @@ function render(force) {
   island.classList.toggle('big', p === 'expanded' || p === 'flash');
   island.dataset.mode = p;
   // Latar panel Home ikut warna sampul, tipis aja
-  const tinted = p === 'expanded' && S.tab === 'home' && S.media?.title && S.tint;
+  const tinted = p === 'expanded' && (S.tab === 'home' || (S.tab === 'music' && !S.music.online)) && S.media?.title && S.tint;
   island.classList.toggle('tinted', !!tinted);
   if (S.tint) {
     island.style.setProperty('--tint', S.tint);
@@ -87,7 +91,10 @@ function render(force) {
   nusa.setRect({ x: (CANVAS_W - full) / 2 - m, y: 0, w: full + m * 2, h: Math.max(sz.h, 8) + m });
 }
 
-const viewClass = (p) => ({ expanded: 'panel', flash: 'pop', lip: '' }[p] ?? (p === 'idle' ? 'compact center' : 'compact'));
+/** Pop-up kecil seukuran notch (volume, baterai lemah, charger dicabut, timer selesai). */
+const SMALL_FLASH = ['volume', 'low', 'unplug', 'done'];
+const viewClass = (p) => p === 'flash' && SMALL_FLASH.includes(S.flash.kind) ? 'compact'
+  : ({ expanded: 'panel', flash: 'pop', lip: '' }[p] ?? (p === 'idle' ? 'compact center' : 'compact'));
 
 /* ================= isi ================= */
 
@@ -106,8 +113,13 @@ function build(p) {
 }
 
 function afterBuild(p) {
+  // Cermin: kamera mati kalau panel ditutup / pindah tab
+  if (S.mirror?.stream && (p !== 'expanded' || S.tab !== 'home')) stopMirror();
+  const v = $('#mirror');
+  if (v && S.mirror?.stream && v.srcObject !== S.mirror.stream) v.srcObject = S.mirror.stream;
   if (p !== 'expanded') return;
   if (S.tab === 'quran') scrollQuran(false);
+  if (S.tab === 'home' && Date.now() - S.cal.at > 60000) loadCalendar();
   if (S.tab === 'music') { musicPoll(); $('#musicQ')?.focus(); }
   if (S.tab === 'tasks') $('#taskIn')?.focus();
 }
@@ -145,12 +157,38 @@ function flashHTML(f) {
       const detail = mins > 0 ? (mins >= 60 ? `${Math.floor(mins / 60)} hr ${mins % 60} min until full` : `${mins} min until full`) : 'Connected to power';
       return `<span class="batt"><i id="battFill"></i>${IC.bolt}</span><span class="txt"><b>Charging</b><small>${detail}</small></span><span class="big mono">${f.percent}%</span>`;
     }
+    case 'device':
+      return `<span class="badge">${IC.headphones}</span><span class="txt"><b>${esc(f.name)}</b><small class="mono">${esc(f.detail)}</small></span><span style="color:var(--green);font-size:16px">${IC.check}</span>`;
+    case 'volume': return `<span data-live="volFlash" style="display:contents"></span>`;
+    case 'low': return smallRow(IC.battLow, 'var(--late)', 'Low battery', `${f.percent}%`, 'var(--late)');
+    case 'unplug': return smallRow(IC.plug, 'var(--dim)', 'Charger removed', `${f.percent}%`, '#fff');
+    case 'done': return smallRow(IC.timer, '#ff9f0a', 'Time’s up', '', '#ff9f0a');
   }
   return '';
 }
 
+const smallRow = (icon, tint, text, value, valueTint) =>
+  `<span style="color:${tint};display:inline-flex">${icon}</span><span class="t">${text}</span><span class="mono" style="color:${valueTint}">${value}</span>`;
+
+const spkIcon = (a) => !a || a.muted || a.vol === 0 ? IC.spk0 : a.vol < 0.34 ? IC.spk1 : IC.spk2;
+
+function volFlashHTML() {
+  const f = S.flash;
+  if (f?.kind !== 'volume') return '';
+  return `<span style="display:inline-flex;width:18px;justify-content:center">${spkIcon({ vol: f.level, muted: f.muted })}</span>
+    <span class="vbar"><i style="width:${(f.muted ? 0 : f.level) * 100}%"></i></span>
+    <span class="mono" style="width:38px;text-align:right">${f.muted ? 'Muted' : Math.round(f.level * 100) + '%'}</span>`;
+}
+
 function showFlash(f, seconds) {
   clearTimeout(flashTimer);
+  // Volume yang digeser terus: isinya aja yang diganti, biar nggak animasi ulang tiap langkah
+  if (f.kind === 'volume' && S.flash?.kind === 'volume') {
+    Object.assign(S.flash, f);
+    live();
+    flashTimer = setTimeout(() => { S.flash = null; render(); }, seconds * 1000);
+    return;
+  }
   S.flash = { ...f, id: Math.random().toString(36).slice(2) };
   render();
   if (f.kind === 'charging') requestAnimationFrame(() => requestAnimationFrame(() => { const b = $('#battFill'); if (b) b.style.width = `${Math.round(36 * f.percent / 100)}px`; }));
@@ -159,7 +197,7 @@ function showFlash(f, seconds) {
 
 /* ---------- panel ---------- */
 
-const TABS = [['home', 'Home', 'home'], ['music', 'Music', 'music'], ['tasks', 'Tasks', 'tasks'], ['prayer', 'Prayer', 'moon'], ['quran', 'Quran', 'book'], ['clips', 'Clips', 'clips']];
+const TABS = [['home', 'Home', 'home'], ['music', 'Music', 'music'], ['tasks', 'Tasks', 'tasks'], ['tray', 'Tray', 'tray'], ['clips', 'Clips', 'clips'], ['prayer', 'Prayer', 'moon'], ['quran', 'Quran', 'book']];
 
 function panelHTML() {
   const tabs = TABS.map(([k, label, ic]) => `<button class="tab ${S.tab === k ? 'on' : ''}" data-act="tab" data-tab="${k}" title="${label}">${IC[ic]}${S.tab === k ? `<span>${label}</span>` : ''}</button>`).join('');
@@ -168,37 +206,92 @@ function panelHTML() {
     : `<span style="color:var(--dim)">${IC.timer}</span>${[5, 15, 25].map((m) => `<button class="chip" data-act="timer" data-m="${m}">${m}m</button>`).join('')}`;
   const w = S.weather;
   const wx = w ? `<button class="chip" data-act="wxMenu" title="${esc(wxLabel(w.code))} · feels ${Math.round(w.feels)}°">${IC[wxIcon(w.code, w.day)]}<span class="mono">${Math.round(w.temp)}°</span></button>` : '';
-  const batt = S.battery ? `<span class="mono" style="font-size:11.5px;font-weight:600;color:${S.battery.charging ? 'var(--green)' : S.battery.level <= 20 ? 'var(--late)' : '#fff'}">${S.battery.charging ? '⚡' : ''}${S.battery.level}%</span>` : '';
-  return `<div class="top">${tabs}<span class="sp"></span>${timer}<span class="sep"></span>${wx}${batt}
+  const b = S.battery;
+  const batt = b ? `<span class="bicon ${b.charging ? 'chg' : b.level <= 20 ? 'low' : ''}" title="${b.level}%${b.charging ? ' · charging' : ''}"><i style="width:${Math.max(8, b.level)}%"></i>${b.charging ? IC.bolt : ''}</span>
+    <span class="mono" style="font-size:11px;font-weight:500">${b.level}%</span>` : '';
+  const vol = S.audio ? `<span class="vol" title="${esc(S.audio.name)}"><button data-act="muteToggle" title="${S.audio.muted ? 'Unmute' : 'Mute'}">${spkIcon(S.audio)}</button>
+    <span class="vtrack" id="volTrack" data-live="volLevel"></span></span><span class="sep"></span>` : '';
+  return `<div class="top">${tabs}<span class="sp"></span>${vol}${timer}<span class="sep"></span>${wx}${batt}
       <button class="ibtn ${S.pinned ? 'on' : ''}" data-act="pin" title="${S.pinned ? 'Unpin panel' : 'Keep panel open'}">${S.pinned ? IC.lock : IC.unlock}</button>
       <button class="ibtn" data-act="gear" title="Settings">${IC.gear}</button></div>
-    <div class="body">${({ home: homeHTML, music: musicHTML, tasks: tasksHTML, prayer: prayerHTML, quran: quranHTML, clips: clipsHTML }[S.tab] || homeHTML)()}</div>
+    <div class="body">${({ home: homeHTML, music: musicHTML, tasks: tasksHTML, tray: trayHTML, prayer: prayerHTML, quran: quranHTML, clips: clipsHTML }[S.tab] || homeHTML)()}</div>
     ${S.menu ? menuHTML() : ''}`;
 }
 
 /* ---------- Home ---------- */
 
+/** Sampul + ikon app sumber di pojoknya; diklik = buka app yang lagi muter. */
+function coverHTML(m, cls = 'cover') {
+  const img = m.art ? `<img class="${cls}" src="${esc(m.art)}" alt="">` : `<span class="${cls} empty">${IC.music}</span>`;
+  return `<span class="cwrap" ${m.path || m.source ? `data-act="openSource" title="Open ${esc(m.app || 'app')}"` : ''}>${img}${m.icon ? `<img class="appic" src="${esc(m.icon)}" alt="">` : ''}</span>`;
+}
+
+const seekable = (m) => m?.duration > 0 && !m.noTimeline && m.canSeek !== false;
+
 function homeHTML() {
   const m = S.media;
   const music = m?.title
-    ? `<div class="np">${m.art ? `<img class="cover" src="${esc(m.art)}" alt="">` : `<span class="cover"></span>`}
+    ? `<div class="np">${coverHTML(m)}
         <div class="col" style="flex:1"><b>${esc(m.title)}</b>${m.album ? `<small>${esc(m.album)}</small>` : ''}<small>${esc(m.artist)}</small>
         <div class="ctl"><button data-act="mprev" title="Previous">${IC.prev}</button><button class="main" data-act="mtoggle" title="Play/Pause">${m.playing ? IC.pause : IC.play}</button><button data-act="mnext" title="Next">${IC.next}</button></div>
-        ${m.duration && !m.noTimeline ? `<div class="bar" data-live="mbar"></div>` : ''}</div></div>`
+        ${m.duration && !m.noTimeline ? `<div class="bar ${seekable(m) ? 'seek' : ''}" data-live="mbar"></div>` : ''}</div></div>`
     : `<div class="note">${IC.music}<span>Nothing playing</span></div>`;
-  return `<div class="col" style="width:262px;justify-content:center">${music}</div><div class="vline"></div>
-    <div class="col agenda" style="flex:1;justify-content:center" data-live="agenda"></div><div class="vline"></div>
-    <div class="col" style="width:180px;justify-content:center" data-live="wxCard"></div>`;
+  return `<div class="col" style="width:250px;justify-content:center">${music}</div><div class="vline"></div>
+    <div class="col" style="flex:1">${calendarHTML()}</div><div class="vline"></div>
+    <div class="col wxcol" style="width:168px;justify-content:center">
+      ${S.mirror?.stream ? `<video id="mirror" autoplay muted playsinline></video>` : `<div class="col" data-live="wxCard"></div>`}
+      <button class="mirror-btn ${S.mirror?.stream ? 'on' : ''}" data-act="mirror" title="${S.mirror?.stream ? 'Close mirror' : S.mirror?.denied ? 'Camera blocked — allow it in Windows Settings › Privacy › Camera' : 'Mirror (camera)'}">${S.mirror?.stream ? IC.x : S.mirror?.denied ? IC.videoOff : IC.video}</button>
+    </div>`;
+}
+
+/* Kalender: strip 7 hari kayak versi Mac. Isinya event dari kalender Windows (akun di Settings › Accounts /
+   app Calendar bawaan), ditambah tugas Nusa yang jatuh tempo di hari itu dan sholat berikutnya kalau hari ini. */
+const dayStart = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+
+async function loadCalendar() {
+  if (!isWin) { S.cal = { status: 'off', events: [], at: Date.now() }; return; }
+  const from = +dayStart(Date.now()) - 2 * 86400000;
+  const r = await nusa.calendar(from, 7);
+  S.cal = { status: r?.error === 'denied' ? 'denied' : r?.error ? 'error' : 'ok', events: r?.events || [], calendars: r?.calendars || 0, at: Date.now() };
+  if (S.expanded && S.tab === 'home') live();
+}
+
+function calendarHTML() {
+  const today = dayStart(new Date());
+  const sel = S.calSel && +dayStart(S.calSel) ? dayStart(S.calSel) : today;
+  const days = [-2, -1, 0, 1, 2, 3, 4].map((k) => new Date(+today + k * 86400000 + 3600000 * 2)).map(dayStart);
+  const fmt = (d, o) => d.toLocaleDateString('en-US', o);
+  return `<div class="cal-head"><b>${fmt(sel, { month: 'short' })}</b>${days.map((d) => {
+    const isToday = +d === +today, isSel = +d === +sel, past = d < today;
+    return `<button class="day ${isSel ? 'on' : ''} ${isToday ? 'today' : past ? 'past' : ''}" data-act="calDay" data-t="${+d}" title="${fmt(d, { weekday: 'long', month: 'long', day: 'numeric' })}">
+      <small>${fmt(d, { weekday: 'short' }).slice(0, 3).toUpperCase()}</small><b class="mono">${d.getDate()}</b></button>`;
+  }).join('')}</div><div class="cal-list" data-live="agenda"></div>`;
 }
 
 function agendaHTML() {
-  const now = new Date();
-  const n = Prayer.next(S.place, now);
-  const open = S.tasks.filter((t) => !t.done).sort((a, b) => (a.due ?? Infinity) - (b.due ?? Infinity)).slice(0, 3);
-  return `<span class="label">Up next</span>
-    <div class="ag">${IC.moon}<span>${n.title}</span><em>${hhmm(n.date, S.place.tz)} · in ${mins(n.date - now)}</em></div>
-    ${open.map((t) => `<div class="ag ${t.due && t.due < now ? 'late' : ''}">${IC.bell}<span>${esc(t.title)}</span><em>${t.due ? dueText(new Date(t.due)) : ''}</em></div>`).join('')
-    || `<div class="ag" style="color:var(--dim)">${IC.check}<span>No tasks — add one in Tasks</span></div>`}`;
+  const now = new Date(), today = dayStart(now);
+  const sel = S.calSel ? dayStart(S.calSel) : today;
+  const end = +sel + 86400000;
+  const rows = [];
+  if (+sel === +today) {
+    const n = Prayer.next(S.place, now);
+    if (n.date < end) rows.push({ color: 'var(--mint)', title: n.title, time: `${hhmm(n.date, S.place.tz)} · in ${mins(n.date - now)}`, at: +n.date });
+  }
+  // Event kalender Windows yang nyentuh hari ini (acara seharian / lewat tengah malam ikut kehitung)
+  for (const e of S.cal.events) {
+    const until = e.start + Math.max(1, e.minutes) * 60000;
+    if (e.start >= end || until <= +sel) continue;
+    rows.push({ color: e.color || '#0a85ff', title: e.title || 'Untitled', time: e.allDay ? 'All day' : hhmm(new Date(e.start)), at: e.allDay ? +sel - 1 : e.start, done: !e.allDay && until < +now });
+  }
+  for (const t of S.tasks) {
+    if (t.done || !t.due) continue;
+    const late = t.due < +now;
+    if ((t.due >= +sel && t.due < end) || (+sel === +today && late)) rows.push({ color: late ? 'var(--late)' : 'var(--rest)', title: t.title, time: late ? 'Overdue' : hhmm(new Date(t.due)), at: t.due, late });
+  }
+  rows.sort((a, b) => a.at - b.at);
+  if (S.cal.status === 'denied' && !rows.length) return `<button class="note" data-act="calSettings" style="gap:3px">${IC.calendar}<span>Allow calendar access in Settings</span></button>`;
+  if (!rows.length) return `<div class="note" style="gap:3px">${IC.calendar}<span>${+sel === +today ? 'No more events today' : 'No events'}</span></div>`;
+  return rows.slice(0, 4).map((r) => `<div class="ev ${r.late ? 'late' : r.done ? 'done' : ''}"><i style="background:${r.color}"></i><span>${esc(r.title)}</span><em class="mono">${r.time}</em></div>`).join('');
 }
 
 function wxCardHTML() {
@@ -211,14 +304,15 @@ function wxCardHTML() {
     <div class="wx-hours">${hours.map((h) => `<div>${hhmm(new Date(h.time), S.place.tz)}${IC[wxIcon(h.code, true)]}<b class="${h.rain >= 30 ? 'wet' : ''}">${h.rain >= 30 ? h.rain + '%' : Math.round(h.temp) + '°'}</b></div>`).join('')}</div>`;
 }
 
-/* ---------- Music (Senandung) ---------- */
+/* ---------- Music ---------- */
+// Senandung jalan → antrean + cari lagu. Nggak jalan → pemutar dari app apa aja (Spotify, browser, Media Player, dll).
 
 function musicHTML() {
   const mu = S.music;
+  if (!mu.online) return `<div class="col" style="flex:1">${systemPlayerHTML()}</div>`;
   const head = `<div class="field">${IC.search}<input id="musicQ" placeholder="Search songs, artists…" value="${esc(mu.query)}" autocomplete="off" spellcheck="false"></div>`;
   let list;
-  if (!mu.online) list = `<div class="note">${IC.music}<b>Senandung isn’t running</b><span>Open Senandung to see your queue and pick songs from here.</span></div>`;
-  else if (mu.query.trim() && mu.searching && !mu.results.length) list = `<div class="note"><span>Searching…</span></div>`;
+  if (mu.query.trim() && mu.searching && !mu.results.length) list = `<div class="note"><span>Searching…</span></div>`;
   else {
     const rows = mu.query.trim() ? mu.results : mu.queue;
     list = rows.length
@@ -226,6 +320,19 @@ function musicHTML() {
       : `<div class="note">${IC.music}<span>${mu.query.trim() ? 'No songs found.' : 'Nothing queued in Senandung yet.'}</span></div>`;
   }
   return `<div class="col" style="flex:1;gap:10px">${head}${list}</div>`;
+}
+
+function systemPlayerHTML() {
+  const m = S.media;
+  if (!m?.title) return `<div class="note">${IC.music}<b>Nothing playing</b><span>Play something in Spotify, YouTube, or any music app — it’ll show up here.</span></div>`;
+  const timeline = m.duration && !m.noTimeline;
+  return `<div class="np big">${coverHTML(m)}
+    <div class="col" style="flex:1;min-width:0">
+      ${m.app ? `<span class="label">${m.playing ? 'Playing' : 'Paused'} · ${esc(m.app)}</span>` : ''}
+      <b>${esc(m.title)}</b><small>${esc(m.artist)}</small>${m.album ? `<small>${esc(m.album)}</small>` : ''}
+      <div class="ctl"><button data-act="mprev" title="Previous">${IC.prev}</button><button class="main" data-act="mtoggle" title="Play/Pause">${m.playing ? IC.pause : IC.play}</button><button data-act="mnext" title="Next">${IC.next}</button></div>
+      ${timeline ? `<div class="bar ${seekable(m) ? 'seek' : ''}" data-live="mbar"></div><div class="times mono" data-live="mtime"></div>` : ''}
+    </div></div>`;
 }
 
 function songRow(s, k, queue) {
@@ -247,7 +354,7 @@ async function musicPoll() {
   const was = JSON.stringify([mu.online, mu.idx, mu.queue.length, mu.playing]);
   mu.online = !!st;
   if (st) { mu.queue = st.queue || []; mu.idx = st.idx; mu.playing = st.playing; }
-  if (JSON.stringify([mu.online, mu.idx, mu.queue.length, mu.playing]) !== was && !mu.query.trim()) refreshBody();
+  if (JSON.stringify([mu.online, mu.idx, mu.queue.length, mu.playing]) !== was && !mu.query.trim()) { refreshBody(); render(); }
   musicTimer = setTimeout(musicPoll, 1500);
 }
 
@@ -276,8 +383,10 @@ function refreshBody() {
     const tmp = document.createElement('div');
     tmp.innerHTML = html;
     const fresh = tmp.firstElementChild;
-    fresh.replaceChild(field, fresh.firstElementChild);
+    // Kolom cari yang lama dipertahanin biar ketikan & fokus nggak ilang
+    if (field && fresh.firstElementChild?.classList.contains('field')) fresh.replaceChild(field, fresh.firstElementChild);
     body.replaceChildren(fresh);
+    live();
   } else if (S.tab === 'tasks') {
     const list = $('#taskList');
     if (list) list.innerHTML = taskListHTML();
@@ -508,6 +617,53 @@ function clipsHTML() {
   return `<div class="cards" style="flex:1">${S.clips.map((c, i) => `<button class="card ${S.copied === i ? 'ok' : ''}" data-act="copy" data-i="${i}"><p>${esc(c.trim())}</p><small>${S.copied === i ? 'Copied' : c.length + ' characters'}</small></button>`).join('')}</div>`;
 }
 
+/* ---------- Rak (Tray): file yang ditaruh buat nanti ---------- */
+
+const midTrim = (s, n = 16) => s.length <= n ? s : s.slice(0, Math.ceil(n / 2) - 1) + '…' + s.slice(-(Math.floor(n / 2)));
+
+function trayHTML() {
+  const items = S.shelf;
+  const inner = items.length
+    ? `<div class="shelf">${items.map((p, i) => {
+        const f = S.files[p];
+        return `<div class="sitem" draggable="true" data-act="fileOpen" data-i="${i}" title="${esc(p)}\nClick to open · drag out to use">
+          ${f?.icon ? `<img src="${esc(f.icon)}" alt="">` : `<span class="ph">${IC.clips}</span>`}<small>${esc(midTrim(f?.name || p.split(/[\\/]/).pop()))}</small>
+          <button class="rm" data-act="fileRemove" data-i="${i}" title="Remove from Tray">${IC.xCircle}</button></div>`;
+      }).join('')}</div>
+      <div class="shelf-side"><button class="sbtn" data-act="fileShow" title="Show the last file in its folder">${IC.clips}<span>Show</span></button>
+        <button class="sbtn" data-act="trayClear" title="Remove everything from Tray">${IC.x}<span>Clear</span></button></div>`
+    : `<div class="note">${IC.trayIn}<span>Drop files here to keep them for later</span></div>`;
+  return `<div class="drop ${S.dropping ? 'on' : ''}">${inner}</div>`;
+}
+
+async function addToShelf(p) {
+  if (!p || S.shelf.includes(p)) return;
+  const info = await nusa.fileInfo(p);
+  if (!info) return;
+  S.files[p] = info;
+  S.shelf = [...S.shelf, p];
+  LS.set('shelf', S.shelf);
+  if (S.expanded && S.tab === 'tray') render(true);
+}
+
+function removeFromShelf(p) {
+  S.shelf = S.shelf.filter((x) => x !== p);
+  LS.set('shelf', S.shelf);
+  render(true);
+}
+
+/** Pas nyala: ambil ikon tiap file, yang udah dihapus/dipindah dibuang dari Rak. */
+async function loadShelf() {
+  const keep = [];
+  for (const p of S.shelf) {
+    const info = await nusa.fileInfo(p);
+    if (info) { S.files[p] = info; keep.push(p); }
+  }
+  S.shelf = keep;
+  LS.set('shelf', keep);
+  if (S.expanded && S.tab === 'tray') render(true);
+}
+
 /* ---------- menu kecil di dalam panel ---------- */
 
 function menuHTML() {
@@ -592,7 +748,7 @@ function finishFocus() {
 function startTimer(m) {
   clearTimeout(timerDone);
   S.timer = { end: Date.now() + m * 60000, total: m * 60000 };
-  timerDone = setTimeout(() => { S.timer = null; chime([880, 660, 880]); render(true); }, m * 60000);
+  timerDone = setTimeout(() => { S.timer = null; chime([880, 660, 880]); render(true); if (!S.expanded) showFlash({ kind: 'done' }, 4); }, m * 60000);
   render(true);
 }
 
@@ -603,10 +759,15 @@ const LIVE = {
   focusLeft: () => S.focus ? clock((S.focus.end - Date.now()) / 1000 + 0.999) : '',
   focusRing: () => ringSVG('focus'),
   idle: () => idleHTML(),
-  mbar: () => { const m = S.media; if (!m?.duration) return ''; const pos = m.position + (m.playing ? (Date.now() - m.at) / 1000 : 0); return `<i style="width:${Math.min(100, pos / m.duration * 100)}%"></i>`; },
+  mbar: () => { const m = S.media; if (!m?.duration) return ''; return `<i style="width:${Math.min(100, (S.scrub ?? mediaPos()) / m.duration * 100)}%"></i>`; },
+  mtime: () => { const m = S.media; if (!m?.duration) return ''; return `<span>${clock(Math.min(S.scrub ?? mediaPos(), m.duration))}</span><span>${clock(m.duration)}</span>`; },
+  volLevel: () => S.audio ? `<i style="width:${(S.audio.muted ? 0 : S.audio.vol) * 100}%"></i>` : '',
+  volFlash: volFlashHTML,
   agenda: agendaHTML, wxCard: wxCardHTML, prTop: prTopHTML, prTrack: prTrackHTML,
   prMarks: () => { const t = Prayer.times(S.place, new Date()); return `Imsak ${hhmm(t[0].date, S.place.tz)} · Sunrise ${hhmm(t[2].date, S.place.tz)}`; },
 };
+
+const mediaPos = () => { const m = S.media; return (m?.position || 0) + (m?.playing ? (Date.now() - m.at) / 1000 : 0); };
 
 function live() {
   for (const el of document.querySelectorAll('[data-live]')) {
@@ -649,6 +810,12 @@ nusa.on('media', (st) => {
   if (!st?.art) S.tint = null;
   const newTrack = before?.title && st?.title && st.title !== before.title && st.playing;
   if (newTrack && !S.expanded && S.focus?.phase !== 'focus') showFlash({ kind: 'track' }, 2.6);
+  else if (lastKey === 'x:music') {
+    // Posisi lagu jalan sendiri lewat live(); bangun ulang cuma kalau lagunya/statusnya berubah (biar sampul nggak kedip)
+    const sig = (x) => JSON.stringify(x && [x.title, x.artist, x.album, x.art, x.app, x.playing, Math.round(x.duration || 0)]);
+    if (!S.music.online && sig(before) !== sig(st)) refreshBody();
+    render();
+  }
   else render(lastKey === 'music' || lastKey === 'x:home');
 });
 
@@ -657,6 +824,122 @@ nusa.on('clip', (t) => {
   S.clips = [t, ...S.clips.filter((c) => c !== t)].slice(0, 20);
   if (S.expanded && S.tab === 'clips') render(true);
 });
+
+/* ---------- volume sistem & perangkat audio ---------- */
+
+let volDragging = false;
+nusa.on('audio', (a) => {
+  const before = S.audio;
+  if (volDragging && a) a = { ...a, vol: S.audio?.vol ?? a.vol }; // jangan loncat-loncat pas lagi digeser
+  S.audio = a;
+  if (!a) return render(lastKey.startsWith('x:'));
+  const changed = before && before.id === a.id && (Math.abs(before.vol - a.vol) > 0.004 || before.muted !== a.muted);
+  if (changed && !S.expanded && !['prayer', 'task', 'focusEnd', 'device'].includes(S.flash?.kind)) showFlash({ kind: 'volume', level: a.vol, muted: a.muted }, 1.6);
+  if (S.expanded && (!before || before.muted !== a.muted || before.id !== a.id)) render(true);
+  else live();
+});
+
+nusa.on('device', (d) => {
+  if (S.expanded) return;
+  showFlash({ kind: 'device', name: d.name.replace(/^.*\((.*)\)\s*$/, '$1') || d.name, detail: d.detail }, 4);
+});
+
+/* ---------- geser: posisi lagu & volume ---------- */
+
+function dragOn(el, onMove, onEnd) {
+  const at = (e) => { const r = el.getBoundingClientRect(); return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)); };
+  const move = (e) => onMove(at(e));
+  const up = (e) => { try { el.releasePointerCapture(e.pointerId); } catch {} el.removeEventListener('pointermove', move); el.removeEventListener('pointerup', up); el.classList.remove('drag'); onEnd?.(at(e)); };
+  return (e) => { try { el.setPointerCapture(e.pointerId); } catch {} el.classList.add('drag'); el.addEventListener('pointermove', move); el.addEventListener('pointerup', up); move(e); };
+}
+
+document.addEventListener('pointerdown', (e) => {
+  const bar = e.target.closest('.bar.seek');
+  if (bar && seekable(S.media)) {
+    const dur = S.media.duration;
+    dragOn(bar, (f) => { S.scrub = f * dur; live(); }, (f) => { nusa.media(`seek ${(f * dur).toFixed(2)}`); S.media = { ...S.media, position: f * dur, at: Date.now() }; S.scrub = null; live(); })(e);
+    return;
+  }
+  const vt = e.target.closest('#volTrack');
+  if (vt && S.audio) {
+    volDragging = true;
+    let last = 0;
+    const set = (f) => {
+      S.audio = { ...S.audio, vol: f, muted: f === 0 ? S.audio.muted : false }; live();
+      if (Date.now() - last > 40) { last = Date.now(); nusa.volume(f); }
+    };
+    dragOn(vt, set, (f) => { nusa.volume(f); setTimeout(() => { volDragging = false; }, 400); })(e);
+  }
+});
+
+/* ---------- usap dua jari di notch: kiri = lagu berikutnya, kanan = sebelumnya ---------- */
+
+const swipe = { total: 0, fired: false, idle: null };
+document.addEventListener('wheel', (e) => {
+  if (S.expanded || !S.media?.title || !e.target.closest('#island')) return;
+  clearTimeout(swipe.idle);
+  swipe.idle = setTimeout(() => { swipe.total = 0; swipe.fired = false; }, 220); // jeda = usapan selesai
+  if (swipe.fired || Math.abs(e.deltaX) < Math.abs(e.deltaY)) return;
+  swipe.total += e.deltaX;
+  if (Math.abs(swipe.total) < 45) return;
+  swipe.fired = true;
+  const next = swipe.total > 0;
+  nusa.media(next ? 'next' : 'prev');
+  const island = $('#island');
+  island.style.translate = `calc(-50% + ${next ? -7 : 7}px) 0`;
+  setTimeout(() => { island.style.translate = ''; }, 140);
+}, { passive: true });
+
+/* ---------- klik kanan notch: Open at login / Quit ---------- */
+
+document.addEventListener('contextmenu', (e) => {
+  if (e.target.closest('input, textarea')) return;
+  e.preventDefault();
+  if (e.target.closest('#island')) nusa.contextMenu();
+});
+
+/* ---------- seret file ke notch → langsung buka Rak ---------- */
+
+const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes('Files');
+document.addEventListener('dragover', (e) => { e.preventDefault(); if (hasFiles(e)) e.dataTransfer.dropEffect = 'copy'; });
+document.addEventListener('dragenter', (e) => {
+  if (!hasFiles(e)) return;
+  e.preventDefault();
+  if (!S.expanded || S.tab !== 'tray' || !S.dropping) { S.expanded = true; S.tab = 'tray'; S.dropping = true; render(true); }
+});
+document.addEventListener('dragleave', (e) => {
+  if (e.relatedTarget && document.documentElement.contains(e.relatedTarget)) return;
+  if (S.dropping) { S.dropping = false; if (S.expanded) render(true); }
+});
+document.addEventListener('drop', async (e) => {
+  e.preventDefault();
+  S.dropping = false;
+  const paths = [...(e.dataTransfer?.files || [])].map((f) => nusa.filePath(f)).filter(Boolean);
+  for (const p of paths) await addToShelf(p);
+  if (S.expanded) render(true);
+});
+document.addEventListener('dragstart', (e) => {
+  const it = e.target.closest?.('.sitem');
+  if (!it) return;
+  e.preventDefault();
+  nusa.fileDrag(S.shelf[+it.dataset.i]);
+});
+
+/* ---------- cermin kamera ---------- */
+
+async function toggleMirror() {
+  if (S.mirror?.stream) return stopMirror(true);
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: false });
+    S.mirror = { stream };
+  } catch { S.mirror = { denied: true }; }
+  render(true);
+}
+function stopMirror(rerender) {
+  S.mirror?.stream?.getTracks().forEach((t) => t.stop());
+  S.mirror = null;
+  if (rerender) render(true);
+}
 
 /** Warna paling hidup dari sampul (sampul dari server lain bisa nolak dibaca, ya udah tanpa warna). */
 function computeTint(src) {
@@ -718,6 +1001,15 @@ document.addEventListener('click', (e) => {
     timer: () => startTimer(+d.m), timerStop: () => { clearTimeout(timerDone); S.timer = null; render(true); },
     wxMenu: () => openMenu('wx', el),
     mprev: () => nusa.media('prev'), mnext: () => nusa.media('next'), mtoggle: () => nusa.media('toggle'),
+    openSource: () => { const m = S.media; if (m) nusa.openSource({ pid: m.pid, path: m.path, source: m.source }); },
+    muteToggle: () => { if (S.audio) { nusa.mute(!S.audio.muted); S.audio = { ...S.audio, muted: !S.audio.muted }; render(true); } },
+    calDay: () => { S.calSel = +d.t; render(true); },
+    calSettings: () => nusa.calendarSettings(),
+    mirror: () => toggleMirror(),
+    fileOpen: () => nusa.fileOpen(S.shelf[+d.i]),
+    fileRemove: () => { e.stopPropagation(); removeFromShelf(S.shelf[+d.i]); },
+    fileShow: () => nusa.fileShow(S.shelf[S.shelf.length - 1]),
+    trayClear: () => { S.shelf = []; LS.set('shelf', []); render(true); },
     mjump: () => { const s = S.music.queue[+d.k]; if (s) nusa.senandung('POST', '/api/remote/cmd', { cmd: 'jump', index: s.i }); },
     mplay: () => { const s = S.music.results[+d.k]; if (s) nusa.senandung('POST', '/api/remote/cmd', { cmd: 'play', item: s }); },
     mqueue: () => { e.stopPropagation(); const s = S.music.results[+d.k]; if (s) nusa.senandung('POST', '/api/remote/cmd', { cmd: 'queue', item: s }); },
@@ -757,12 +1049,27 @@ document.addEventListener('click', (e) => {
 /* ================= mulai ================= */
 
 navigator.getBattery?.().then((b) => {
-  const read = () => { S.battery = { level: Math.round(b.level * 100), charging: b.charging, toFull: isFinite(b.chargingTime) ? Math.round(b.chargingTime / 60) : null }; };
+  // PC tanpa baterai: Chromium ngelapor "100%, lagi dicas" terus; ikon baterai nggak usah ditampilin
+  if (b.level === 1 && b.charging && b.chargingTime === 0 && b.dischargingTime === Infinity) return;
+  let warned = false;
+  const read = () => {
+    S.battery = { level: Math.round(b.level * 100), charging: b.charging, toFull: isFinite(b.chargingTime) ? Math.round(b.chargingTime / 60) : null };
+    // Baterai lemah: sekali aja tiap turun ke 20%
+    if (b.charging || S.battery.level > 20) warned = false;
+    else if (!warned) { warned = true; if (!S.expanded) showFlash({ kind: 'low', percent: S.battery.level }, 4); }
+  };
   read();
-  b.addEventListener('chargingchange', () => { read(); if (b.charging) showFlash({ kind: 'charging', percent: S.battery.level }, 3.5); else render(); });
+  b.addEventListener('chargingchange', () => {
+    read();
+    if (S.expanded) return render(true);
+    showFlash(b.charging ? { kind: 'charging', percent: S.battery.level } : { kind: 'unplug', percent: S.battery.level }, b.charging ? 3.5 : 2.4);
+  });
   b.addEventListener('levelchange', () => { read(); render(); });
   b.addEventListener('chargingtimechange', read);
 });
+loadShelf();
+loadCalendar();
+setInterval(loadCalendar, 5 * 60000);
 
 setInterval(live, 1000);
 setInterval(checkPrayer, 15000);
