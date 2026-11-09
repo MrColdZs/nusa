@@ -154,12 +154,17 @@ function pollSenandung() {
   }, 2000);
 }
 
-let lastSent = '';
+let lastSent = '', lastState = null;
 function publish() {
   const state = osState || senandung || null;
-  const key = JSON.stringify(state && { ...state, at: 0, position: Math.round(state.position || 0) });
-  if (key === lastSent) return;
+  // Posisi yang maju normal nggak perlu dikirim (halaman ngitung sendiri); kirim kalau ada yang berubah atau posisinya loncat (seek)
+  const key = JSON.stringify(state && { ...state, at: 0, position: 0, updated: 0 });
+  if (key === lastSent && state && lastState) {
+    const predicted = (lastState.position || 0) + (lastState.playing ? (Date.now() - lastState.at) / 1000 : 0);
+    if (Math.abs(predicted - (state.position || 0)) < 1.5) return;
+  } else if (key === lastSent) return;
   lastSent = key;
+  lastState = state && { ...state };
   emit(state);
 }
 

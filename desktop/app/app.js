@@ -222,9 +222,13 @@ function panelHTML() {
 
 /** Sampul + ikon app sumber di pojoknya; diklik = buka app yang lagi muter. */
 function coverHTML(m, cls = 'cover') {
-  const img = m.art ? `<img class="${cls}" src="${esc(m.art)}" alt="">` : `<span class="${cls} empty">${IC.music}</span>`;
+  const src = m.hiArt || m.art;
+  const img = src ? `<img class="${cls}" src="${esc(src)}" alt=""${m.hiArt && m.art ? ` data-fallback="${esc(m.art)}"` : ''}>` : `<span class="${cls} empty">${IC.music}</span>`;
   return `<span class="cwrap" ${m.path || m.source ? `data-act="openSource" title="Open ${esc(m.app || 'app')}"` : ''}>${img}${m.icon ? `<img class="appic" src="${esc(m.icon)}" alt="">` : ''}</span>`;
 }
+
+// Sampul HD gagal dimuat (offline dll.): balik ke sampul kecil dari Windows
+document.addEventListener('error', (e) => { const f = e.target?.dataset?.fallback; if (f) { delete e.target.dataset.fallback; e.target.src = f; } }, true);
 
 const seekable = (m) => m?.duration > 0 && !m.noTimeline && m.canSeek !== false;
 
@@ -809,15 +813,18 @@ nusa.on('media', (st) => {
   if (st?.art && st.art !== before?.art) computeTint(st.art);
   if (!st?.art) S.tint = null;
   const newTrack = before?.title && st?.title && st.title !== before.title && st.playing;
+  // Posisi lagu jalan sendiri lewat live() tiap detik. Bangun ulang isi cuma kalau lagu/statusnya beneran berubah;
+  // kalau tiap laporan dibangun ulang, animasi masuknya keulang terus dan panel kelihatan geter & kedip.
+  const changed = mediaSig(before) !== mediaSig(st);
   if (newTrack && !S.expanded && S.focus?.phase !== 'focus') showFlash({ kind: 'track' }, 2.6);
   else if (lastKey === 'x:music') {
-    // Posisi lagu jalan sendiri lewat live(); bangun ulang cuma kalau lagunya/statusnya berubah (biar sampul nggak kedip)
-    const sig = (x) => JSON.stringify(x && [x.title, x.artist, x.album, x.art, x.app, x.playing, Math.round(x.duration || 0)]);
-    if (!S.music.online && sig(before) !== sig(st)) refreshBody();
+    if (!S.music.online && changed) refreshBody();
     render();
   }
-  else render(lastKey === 'music' || lastKey === 'x:home');
+  else render(changed && (lastKey === 'music' || lastKey === 'x:home'));
 });
+
+const mediaSig = (x) => JSON.stringify(x && [x.title, x.artist, x.album, x.art, x.hiArt, x.icon, x.app, x.playing, x.canSeek, x.noTimeline, Math.round(x.duration || 0)]);
 
 nusa.on('clip', (t) => {
   if (!t.trim()) return;

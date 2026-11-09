@@ -60,9 +60,17 @@ function create() {
   }, 40);
 
   // Info lagu + ikon app sumbernya (Spotify, Chrome, ...) buat ditempel di pojok sampul kayak versi Mac
+  let current = null;
   media.start(async (state) => {
     const s = state && JSON.parse(JSON.stringify(state));
     if (s?.path) s.icon = await fileIcon(s.path, 'normal');
+    // Sampul dari Windows cuma 120×120 (pecah kalau digedein): cari versi 600×600 lagu yang sama
+    if (s?.title && s.source !== 'Senandung') {
+      const key = artKey(s);
+      if (hiRes.has(key)) s.hiArt = hiRes.get(key);
+      else hiResArt(s).then(() => { if (current && artKey(current) === key && hiRes.get(key)) send('media', { ...current, hiArt: hiRes.get(key) }); });
+    }
+    current = s;
     send('media', s);
   });
 
@@ -114,6 +122,35 @@ ipcMain.on('mute', (_e, on) => audio.setMute(!!on));
 ipcMain.handle('calendar', (_e, start, days) => calendar.fetch(+start, Math.min(31, Math.max(1, +days || 7))));
 // Izin kalender diblokir: buka halaman Privasi › Kalender di Settings
 ipcMain.on('calendar-settings', () => shell.openExternal(process.platform === 'win32' ? 'ms-settings:privacy-calendar' : 'about:blank'));
+
+/* Sampul resolusi tinggi lewat iTunes Search (gratis, tanpa login). Yang dikirim cuma judul + artis. */
+const hiRes = new Map();
+const pending = new Map();
+const norm = (s) => String(s || '').toLowerCase()
+  .replace(/\s*-\s*topic$|vevo$|official/g, '')
+  .replace(/\(.*?\)|\[.*?\]|feat\.?.*$|ft\.?.*$/g, '')
+  .normalize('NFKD').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+const artKey = (s) => norm(s.artist) + '|' + norm(s.title);
+
+function hiResArt(s) {
+  const key = artKey(s);
+  if (pending.has(key)) return pending.get(key);
+  const title = norm(s.title), artist = norm(s.artist);
+  const job = (async () => {
+    try {
+      const term = encodeURIComponent(`${artist} ${title}`.trim());
+      const res = await fetch(`https://itunes.apple.com/search?term=${term}&entity=song&limit=25`, { signal: AbortSignal.timeout(6000) });
+      const { results = [] } = await res.json();
+      const same = (a, b) => a && b && (a === b || a.includes(b) || b.includes(a));
+      const hit = results.find((r) => same(norm(r.trackName), title) && (!artist || same(norm(r.artistName), artist)))
+        || (artist ? null : results.find((r) => same(norm(r.trackName), title)));
+      hiRes.set(key, hit?.artworkUrl100 ? hit.artworkUrl100.replace(/\/\d+x\d+bb\./, '/600x600bb.') : null);
+    } catch { hiRes.set(key, null); }
+    pending.delete(key);
+  })();
+  pending.set(key, job);
+  return job;
+}
 
 const icons = new Map();
 async function fileIcon(p, size = 'large') {
