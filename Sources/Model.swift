@@ -98,6 +98,24 @@ final class IslandModel: ObservableObject {
     @Published var nudge: CGFloat = 0
     /// Lebar maksimal notch biar nggak numpuk ikon menu bar.
     @Published var compactLimit: CGFloat = .infinity
+    /// Ukuran notch kamera MacBook (nil = layar tanpa notch). Kalau ada, isi island minggir ke kiri-kanan notch.
+    @Published var notch: CGSize? = IslandModel.notchOverride
+
+    /// Buat tes tanpa MacBook ber-notch: NUSA_NOTCH="185x32".
+    static var notchOverride: CGSize? {
+        guard let v = ProcessInfo.processInfo.environment["NUSA_NOTCH"] else { return nil }
+        let p = v.lowercased().split(separator: "x").compactMap { Double($0) }
+        return p.count == 2 ? CGSize(width: p[0], height: p[1]) : nil
+    }
+
+    /// Notch kamera di layar utama: lebar = layar dikurangi area menu kiri & kanan, tinggi = safe area atas.
+    static func hardwareNotch(_ screen: NSScreen?) -> CGSize? {
+        if let o = notchOverride { return o }
+        guard let screen, screen.safeAreaInsets.top > 0,
+              let left = screen.auxiliaryTopLeftArea, let right = screen.auxiliaryTopRightArea else { return nil }
+        let w = screen.frame.width - left.width - right.width
+        return w > 0 ? CGSize(width: w, height: screen.safeAreaInsets.top) : nil
+    }
     let calendar = CalendarModel()
     @Published var prayers = PrayerTimes(place: .named(UserDefaults.standard.string(forKey: "prayerPlace"))) {
         didSet { UserDefaults.standard.set(prayers.place.name, forKey: "prayerPlace") }
@@ -167,9 +185,57 @@ final class IslandModel: ObservableObject {
         return .idle
     }
 
+    /// Tampilan kecil (setinggi menu bar). Di MacBook ber-notch isinya dibagi ke kiri & kanan notch.
+    var isCompact: Bool {
+        switch presentation {
+        case .idle, .music, .timer, .focus: return true
+        case .expanded: return false
+        case .flash(let f):
+            switch f {
+            case .charging(_, let on): return !on
+            case .lowBattery, .volume, .timerDone: return true
+            default: return false
+            }
+        }
+    }
+
+    /// Lebar "telinga" kiri/kanan notch buat tiap tampilan kecil. 0 = cuma notch polos.
+    private var earWidth: CGFloat {
+        switch presentation {
+        case .idle: return hovering ? 92 : 0
+        case .music: return timerRunning ? 58 : 40
+        case .timer: return 58
+        case .focus: return 62
+        case .flash(let f):
+            switch f {
+            case .volume: return 104
+            case .timerDone: return 100
+            default: return 130
+            }
+        case .expanded: return 0
+        }
+    }
+
+    /// Isi tampilan gede (panel, pop-up) digeser ke bawah notch kamera biar nggak ketutup.
+    var topInset: CGFloat { notch != nil && !isCompact ? notch!.height : 0 }
+
+    var size: IslandSize {
+        let base = baseSize
+        guard let n = notch else { return base }
+        if isCompact {
+            let ear = earWidth + (hovering && earWidth > 0 && presentation != .idle ? 6 : 0)
+            if ear == 0 { return IslandSize(width: n.width, height: n.height, radius: 8, shoulder: 4) }
+            return IslandSize(width: max(n.width, min(n.width + ear * 2, compactLimit)), height: n.height, radius: 11, shoulder: 7)
+        }
+        var s = base
+        s.height += n.height
+        s.width = max(s.width, n.width + 60)
+        return s
+    }
+
     /// Menu bar tingginya 25pt. Notch harus muat di situ biar nggak nutup tab browser.
     /// Hover cuma melebarin dikit; panel gede baru kebuka kalau diklik.
-    var size: IslandSize {
+    private var baseSize: IslandSize {
         let bump: CGFloat = hovering ? 12 : 0
         func compact(_ width: CGFloat) -> IslandSize {
             IslandSize(width: min(width, compactLimit), height: 24, radius: 9)

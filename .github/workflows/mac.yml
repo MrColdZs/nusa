@@ -21,6 +21,18 @@ jobs:
           python-version: '3.12'
       - run: pip install Pillow
       - run: sh build.sh --no-install
+      # Potret tiap keadaan ke PNG: layar biasa & MacBook ber-notch (disimulasiin), buat dicek tanpa Mac
+      - name: Render tampilan
+        timeout-minutes: 4
+        continue-on-error: true
+        run: |
+          mkdir -p shots/normal shots/notch
+          dist/Nusa.app/Contents/MacOS/Nusa --render "$PWD/shots/normal"
+          NUSA_NOTCH=200x32 dist/Nusa.app/Contents/MacOS/Nusa --render "$PWD/shots/notch"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: renders
+          path: shots
       - run: ditto -c -k --keepParent dist/Nusa.app Nusa-macOS.zip
       - uses: actions/upload-artifact@v4
         with:

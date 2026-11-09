@@ -58,7 +58,8 @@ struct IdleCarousel: View {
     private enum Item: Hashable { case weather, clock, prayer }
 
     var body: some View {
-        if model.slim && !model.hovering {
+        // MacBook ber-notch: pas diem island cuma seukuran notch kamera (nyaru), isinya muncul pas di-hover
+        if (model.slim || model.notch != nil) && !model.hovering {
             Color.clear
         } else {
             TimelineView(.periodic(from: .now, by: 5)) { ctx in
@@ -73,24 +74,49 @@ struct IdleCarousel: View {
     }
 
     @ViewBuilder private func content(_ item: Item, now: Date) -> some View {
-        HStack(spacing: 5) {
-            switch item {
-            case .weather:
-                Image(systemName: WeatherStore.symbol(w.code, day: w.isDay)).symbolRenderingMode(.multicolor).font(.system(size: 11))
-                Text("\(Int((w.temp ?? 0).rounded()))°").monospacedDigit()
-            case .clock:
-                Image(systemName: "clock").font(.system(size: 10, weight: .semibold)).foregroundStyle(dim)
-                Text(now, format: .dateTime.hour(.twoDigits(amPM: .omitted)).minute()).monospacedDigit()
-            case .prayer:
-                let next = model.prayers.next(after: now)
-                Image(systemName: "moon.stars.fill").font(.system(size: 10)).foregroundStyle(Color(red: 0.36, green: 0.86, blue: 0.66))
-                Text("\(next.name.title) \(prayerClock(next.date, model.prayers.place.timeZone))").monospacedDigit()
+        Group {
+            if model.notch != nil {
+                // Ikon di kiri notch, tulisan di kanan notch
+                HStack(spacing: 0) {
+                    icon(item)
+                    Spacer(minLength: 6)
+                    label(item, now: now)
+                }
+                .padding(.horizontal, 12)
+            } else {
+                HStack(spacing: 5) {
+                    icon(item)
+                    label(item, now: now)
+                }
+                .fixedSize()
             }
         }
         .font(.system(size: 11, weight: .semibold))
         .foregroundStyle(.white)
         .lineLimit(1)
-        .fixedSize()
+    }
+
+    @ViewBuilder private func icon(_ item: Item) -> some View {
+        switch item {
+        case .weather:
+            Image(systemName: WeatherStore.symbol(w.code, day: w.isDay)).symbolRenderingMode(.multicolor).font(.system(size: 11))
+        case .clock:
+            Image(systemName: "clock").font(.system(size: 10, weight: .semibold)).foregroundStyle(dim)
+        case .prayer:
+            Image(systemName: "moon.stars.fill").font(.system(size: 10)).foregroundStyle(Color(red: 0.36, green: 0.86, blue: 0.66))
+        }
+    }
+
+    @ViewBuilder private func label(_ item: Item, now: Date) -> some View {
+        switch item {
+        case .weather:
+            Text("\(Int((w.temp ?? 0).rounded()))°").monospacedDigit()
+        case .clock:
+            Text(now, format: .dateTime.hour(.twoDigits(amPM: .omitted)).minute()).monospacedDigit()
+        case .prayer:
+            let next = model.prayers.next(after: now)
+            Text("\(next.name.title) \(prayerClock(next.date, model.prayers.place.timeZone))").monospacedDigit().fixedSize()
+        }
     }
 }
 

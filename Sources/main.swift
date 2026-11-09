@@ -262,6 +262,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func place() {
         guard let screen = NSScreen.screens.first else { return }
+        // MacBook ber-notch: island dibangun ngelilingin notch kamera (berubah kalau ganti ke monitor luar)
+        let notch = IslandModel.hardwareNotch(screen)
+        if notch != model.notch { model.notch = notch }
         let frame = NSRect(x: screen.frame.midX - canvas.width / 2, y: screen.frame.maxY - canvas.height, width: canvas.width, height: canvas.height)
         if panel.frame != frame { panel.setFrame(frame, display: true) }
     }
@@ -270,7 +273,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func islandRect() -> NSRect {
         var s = model.size
         // Pop-up lagu cuma buat dilihat: bagian bawahnya tembus klik biar tab tetap bisa dipencet
-        if model.flash == .track { s.height = 24 }
+        if model.flash == .track { s.height = model.notch?.height ?? 24 }
         return NSRect(x: panel.frame.midX - s.totalWidth / 2, y: panel.frame.maxY - s.height, width: s.totalWidth, height: s.height)
     }
 
@@ -332,6 +335,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     let states: [(String, IslandModel)] = [
         ("idle", model { _ in }),
+        ("idle-hover", model { $0.hovering = true }),
+        ("focus", model { $0.focus = FocusSession(phase: .focus, end: Date().addingTimeInterval(1200), total: 1500, title: "Kirim laporan") }),
+        ("music-hover", model { music($0); $0.hovering = true }),
+        ("flash-track", model { music($0); $0.flash = .track }),
         ("track", model { music($0); $0.flash = .track }),
         ("slim", model { music($0); $0.slim = true }),
         ("music", model(music)),

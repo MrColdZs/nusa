@@ -74,8 +74,10 @@ struct CompactFocus: View {
                             .stroke(tint, style: StrokeStyle(lineWidth: 2, lineCap: .round)).rotationEffect(.degrees(-90))
                     }
                     .frame(width: 13, height: 13)
-                    Text(f.phase == .focus ? (f.title ?? "Focus") : "Break")
-                        .font(.system(size: 11, weight: .semibold)).foregroundStyle(.white).lineLimit(1)
+                    if model.notch == nil {
+                        Text(f.phase == .focus ? (f.title ?? "Focus") : "Break")
+                            .font(.system(size: 11, weight: .semibold)).foregroundStyle(.white).lineLimit(1)
+                    }
                     Spacer(minLength: 6)
                     Text(clock(left.rounded(.up))).font(.system(size: 11, weight: .semibold)).monospacedDigit().foregroundStyle(tint)
                 }

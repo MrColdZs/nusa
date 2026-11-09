@@ -94,6 +94,7 @@ struct IslandView: View {
         ZStack(alignment: .top) {
             content
                 .id(model.presentation.kind)
+                .padding(.top, model.topInset)
                 .frame(width: target.width, height: target.height)
                 .transition(.morph)
         }
@@ -146,7 +147,7 @@ struct IslandView: View {
         case .flash(.device(let name, let symbol, let detail)): DevicePopup(name: name, symbol: symbol, detail: detail)
         case .flash(.focusEnd(let rest, let title)): FocusEndPopup(rest: rest, title: title, model: model)
         case .focus: CompactFocus(model: model)
-        case .flash(let f): FlashView(flash: f)
+        case .flash(let f): FlashView(flash: f, notched: model.notch != nil)
         case .expanded: ExpandedView(model: model)
         }
     }
@@ -281,10 +282,13 @@ private struct CompactMusic: View {
     var body: some View {
         HStack(spacing: 8) {
             Artwork(image: model.art, side: 16, radius: 4)
-            Text(model.media.title)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.white)
-                .lineLimit(1)
+            // Di MacBook ber-notch judulnya bakal ketutup kamera: cuma sampul (kiri) & equalizer (kanan)
+            if model.notch == nil {
+                Text(model.media.title)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+            }
             Spacer(minLength: 6)
             Equalizer(playing: model.media.playing, tint: model.tint)
             if model.timerRunning { TimerRing(model: model) }
@@ -363,6 +367,8 @@ private struct TrackPopup: View {
 
 private struct FlashView: View {
     let flash: Flash
+    /// MacBook ber-notch: bagian tengah ketutup kamera, jadi isi dibagi ke kiri & kanan.
+    var notched = false
 
     var body: some View {
         switch flash {
@@ -381,13 +387,14 @@ private struct FlashView: View {
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.white)
                     .frame(width: 18)
+                if notched { Spacer(minLength: 6) }
                 GeometryReader { g in
                     ZStack(alignment: .leading) {
                         Capsule().fill(hairline)
                         Capsule().fill(.white).frame(width: g.size.width * (muted ? 0 : level))
                     }
                 }
-                .frame(height: 4)
+                .frame(width: notched ? 44 : nil, height: 4)
                 Text(muted ? "Muted" : "\(Int((level * 100).rounded()))%")
                     .font(.system(size: 11, weight: .semibold))
                     .monospacedDigit()
