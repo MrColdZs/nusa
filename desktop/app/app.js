@@ -39,6 +39,8 @@ function presentation() {
   return 'idle';
 }
 
+const panelHeight = () => ({ prayer: 204, quran: 400, music: 330, tasks: 330 }[S.tab] || 190);
+
 function size(p = presentation()) {
   const bump = 12;
   const c = (w) => ({ w: w + bump, h: 24, r: 9, s: 7 });
@@ -55,8 +57,10 @@ function size(p = presentation()) {
       return { w, h: k === 'charging' ? 58 : 60, r: 20, s: 10 };
     }
     default: {
-      const h = { prayer: 204, quran: 400, music: 330, tasks: 330 }[S.tab] || 190;
-      return { w: 760, h, r: 26, s: 14 };
+      const h = panelHeight();
+      // Dropdown yang kebuka: panel memanjang sementara biar pilihannya nggak kepotong (jendela tingginya 440)
+      const need = S.menu?.h ? Math.min(424, S.menu.y + S.menu.h + 14) : 0;
+      return { w: 760, h: Math.max(h, need), r: 26, s: 14 };
     }
   }
 }
@@ -70,6 +74,8 @@ function render(force) {
   island.classList.toggle('closing', sz.h < lastH);
   lastH = sz.h;
   for (const [k, v] of Object.entries(sz)) island.style.setProperty('--' + k, v + 'px');
+  // Isi panel tetap setinggi aslinya; ruang tambahan cuma buat dropdown
+  island.style.setProperty('--ph', panelHeight() + 'px');
   island.classList.toggle('big', p === 'expanded' || p === 'flash');
   island.dataset.mode = p;
   // Latar panel Home ikut warna sampul, tipis aja
@@ -698,6 +704,9 @@ function openMenu(type, el, extra = {}) {
   const r = el.getBoundingClientRect(), box = $('#island').getBoundingClientRect();
   S.menu = { type, x: Math.min(r.left - box.left, box.width - 220), y: r.bottom - box.top + 4, ...extra };
   render(true);
+  // Ukur tinggi dropdown yang beneran, terus panjangin panel segitu
+  const el2 = $('.menu');
+  if (el2) { S.menu.h = el2.offsetHeight; render(); }
   if (type === 'surah') $('.menu .on')?.scrollIntoView({ block: 'center' });
 }
 

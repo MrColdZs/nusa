@@ -47,6 +47,7 @@ input, select { font: inherit; color: #fff; }
 .island.tinted .tint { opacity: 1; }
 .content { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; }
 .content > .view { position: absolute; inset: 0; display: flex; }
+.content > .view.panel { bottom: auto; height: var(--ph, 100%); }
 .content > .view.enter { animation: morphIn .34s var(--soft) both; }
 @keyframes morphIn { from { opacity: 0; filter: blur(6px); transform: scale(.94); } }
 
