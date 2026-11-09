@@ -103,7 +103,7 @@ struct IslandView: View {
             ZStack {
                 Color.black
                 // Warna sampul tipis di pojok kiri atas panel Home; hitam lagi ke kanan bawah, tanpa glow
-                if model.expanded, model.tab == .home, model.media.exists, model.tintVivid {
+                if model.expanded, model.tab == .home || (model.tab == .music && !MusicRemote.shared.online), model.media.exists, model.tintVivid {
                     LinearGradient(colors: [model.tint.opacity(0.22), model.tint.opacity(0.05), .clear], startPoint: .topLeading, endPoint: .bottomTrailing)
                         .transition(.opacity)
                 }

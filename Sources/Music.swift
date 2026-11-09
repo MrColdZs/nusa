@@ -20,7 +20,7 @@ final class MusicRemote: ObservableObject {
     @Published private(set) var queue: [Song] = []
     @Published private(set) var current = -1
     @Published private(set) var playing = false
-    @Published private(set) var online = true
+    @Published private(set) var online = false
     @Published private(set) var results: [Song] = []
     @Published private(set) var searching = false
     @Published var query = "" {
@@ -111,6 +111,15 @@ struct MusicTab: View {
     @FocusState private var focused: Bool
 
     var body: some View {
+        Group {
+            // Senandung nggak jalan: pemutar dari app apa aja (Spotify, Apple Music, browser, ...), sama kayak versi Windows
+            if remote.online { senandung } else { SystemPlayer(model: model) }
+        }
+        .onAppear { remote.start() }
+        .onDisappear { remote.stop() }
+    }
+
+    private var senandung: some View {
         VStack(spacing: 10) {
             HStack(spacing: 8) {
                 HStack(spacing: 8) {
@@ -132,23 +141,9 @@ struct MusicTab: View {
                 .frame(height: 32)
                 .background(Capsule().fill(.white.opacity(focused ? 0.14 : 0.09)))
                 .onTapGesture { focused = true }
-
-                if !remote.online {
-                    Button {
-                        NSWorkspace.shared.open(URL(fileURLWithPath: NSHomeDirectory() + "/Applications/Senandung.app"))
-                    } label: {
-                        Label("Open Senandung", systemImage: "arrow.up.forward.app")
-                            .font(.system(size: 12, weight: .semibold)).foregroundStyle(.black)
-                            .padding(.horizontal, 12).frame(height: 32)
-                            .background(Capsule().fill(mint))
-                    }
-                    .buttonStyle(Press())
-                }
             }
 
-            if !remote.online {
-                note("Senandung isn’t running", "Open it to see your queue and pick songs from here.")
-            } else if remote.query.trimmingCharacters(in: .whitespaces).isEmpty {
+            if remote.query.trimmingCharacters(in: .whitespaces).isEmpty {
                 list(title: "Up next", empty: "Nothing queued in Senandung yet.") {
                     ForEach(remote.queue) { s in
                         SongRow(song: s, art: remote.artURL(s.art), now: s.index == remote.current, playing: remote.playing, action: nil) {
@@ -169,8 +164,6 @@ struct MusicTab: View {
                 }
             }
         }
-        .onAppear { remote.start() }
-        .onDisappear { remote.stop() }
     }
 
     @ViewBuilder private func list<Rows: View>(title: String, empty: String, @ViewBuilder rows: () -> Rows) -> some View {
@@ -192,6 +185,110 @@ struct MusicTab: View {
             if !sub.isEmpty { Text(sub).font(.system(size: 12)).foregroundStyle(dim) }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+/// Pemutar gede buat lagu dari app apa aja (dibaca helper Now Playing), dipakai kalau Senandung nggak jalan.
+private struct SystemPlayer: View {
+    @ObservedObject var model: IslandModel
+    @State private var scrub: Double?
+
+    private var appURL: URL? {
+        model.media.source.flatMap { NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) }
+    }
+
+    private var appName: String? {
+        appURL.map { FileManager.default.displayName(atPath: $0.path).replacingOccurrences(of: ".app", with: "") }
+    }
+
+    var body: some View {
+        if model.media.exists {
+            HStack(spacing: 20) {
+                ZStack(alignment: .bottomTrailing) {
+                    Artwork(image: model.art, side: 200, radius: 20)
+                        .shadow(color: .black.opacity(0.45), radius: 15, y: 10)
+                    if let url = appURL {
+                        Image(nsImage: NSWorkspace.shared.icon(forFile: url.path))
+                            .resizable()
+                            .frame(width: 40, height: 40)
+                            .offset(x: 7, y: 7)
+                            .accessibilityHidden(true)
+                    }
+                }
+                .onTapGesture { if let url = appURL { NSWorkspace.shared.open(url) } }
+                .help(appName.map { "Open \($0)" } ?? "")
+
+                VStack(alignment: .leading, spacing: 2) {
+                    if let name = appName {
+                        Text("\(model.media.playing ? "Playing" : "Paused") · \(name)".uppercased())
+                            .font(.system(size: 10, weight: .bold)).tracking(1.1).foregroundStyle(mint).lineLimit(1)
+                    }
+                    Text(model.media.title).font(.system(size: 20, weight: .semibold)).foregroundStyle(.white).lineLimit(1).padding(.top, 6)
+                    Text(model.media.artist).font(.system(size: 13)).foregroundStyle(dim).lineLimit(1)
+                    if !model.media.album.isEmpty {
+                        Text(model.media.album).font(.system(size: 13)).foregroundStyle(dim).lineLimit(1)
+                    }
+                    HStack(spacing: 6) {
+                        RoundButton(symbol: "backward.fill", label: "Previous track", size: 17) { model.send("prev") }
+                        RoundButton(symbol: model.media.playing ? "pause.fill" : "play.fill",
+                                    label: model.media.playing ? "Pause" : "Play", size: 23) { model.send("toggle") }
+                        RoundButton(symbol: "forward.fill", label: "Next track", size: 17) { model.send("next") }
+                    }
+                    .offset(x: -8)
+                    .padding(.vertical, 8)
+                    if model.media.duration > 0 { progress }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.horizontal, 8)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            VStack(spacing: 4) {
+                Image(systemName: "music.note.list").font(.system(size: 20)).foregroundStyle(dim)
+                Text("Nothing playing").font(.system(size: 13, weight: .semibold)).foregroundStyle(.white)
+                Text("Play something in Spotify, Apple Music, or any music app — it’ll show up here.")
+                    .font(.system(size: 12)).foregroundStyle(dim)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    /// Bar posisi lagu yang bisa digeser + waktu jalan / total.
+    private var progress: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { ctx in
+            let duration = model.media.duration
+            let position = scrub ?? model.media.position(at: ctx.date)
+            let fraction = duration > 0 ? min(max(position / duration, 0), 1) : 0
+            VStack(spacing: 5) {
+                GeometryReader { g in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color.white.opacity(0.18))
+                        Capsule().fill(model.tintVivid ? model.tint : .white).frame(width: g.size.width * fraction)
+                    }
+                    .frame(height: scrub == nil ? 3 : 6)
+                    .frame(maxHeight: .infinity)
+                    .contentShape(Rectangle())
+                    .gesture(DragGesture(minimumDistance: 0)
+                        .onChanged { scrub = min(max($0.location.x / g.size.width, 0), 1) * duration }
+                        .onEnded { _ in
+                            if let scrub { model.send("seek \(scrub)") }
+                            scrub = nil
+                        })
+                }
+                .frame(height: 12)
+                HStack {
+                    Text(clock(position))
+                    Spacer()
+                    Text(clock(duration))
+                }
+                .font(.system(size: 10.5))
+                .monospacedDigit()
+                .foregroundStyle(.white.opacity(0.4))
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Track position")
+            .accessibilityValue("\(clock(position)) of \(clock(duration))")
+        }
     }
 }
 
