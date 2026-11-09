@@ -2,6 +2,38 @@
 
 Dynamic Island buat MacBook: notch di tengah menu bar yang nampilin lagu, pengingat tugas, waktu sholat, cuaca, dan fokus, lalu kebuka jadi panel kalau diklik.
 
+## Pasang
+
+### macOS (14 Sonoma atau lebih baru, Apple Silicon & Intel)
+
+Paling gampang, buka **Terminal** lalu tempel:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/quraishrahmatulloh-source/nusa/main/install.sh | sh
+```
+
+Script itu ngunduh `Nusa-macOS.zip` dari Release, masang ke Applications, terus buka Nusa.
+
+**Kenapa nggak cukup unduh zip dari browser?** Nusa belum ditandatangani pakai akun developer Apple, jadi file dari browser
+diblok macOS dengan pesan *"Apple could not verify Nusa…"*. Kalau udah terlanjur unduh zip-nya:
+
+1. Pindahin `Nusa.app` ke folder Applications, buka sekali (bakal muncul pesan itu), klik **Done**.
+2. Buka **System Settings → Privacy & Security**, scroll ke bawah, klik **Open Anyway** di baris Nusa, masukin password.
+3. Atau lewat Terminal: `xattr -dr com.apple.quarantine /Applications/Nusa.app`
+
+Pas pertama jalan, macOS bisa minta izin (Kalender, Kamera, Bluetooth) cuma kalau fitur itu dipakai.
+
+### Windows 10/11
+
+Unduh `Nusa-Setup-x.y.z.exe` dari [Releases](https://github.com/quraishrahmatulloh-source/nusa/releases/latest), jalanin wizard-nya.
+Kalau muncul *"Windows protected your PC"*, klik **More info → Run anyway** (installer belum ditandatangani).
+
+### Linux
+
+- Ubuntu/Debian: `sudo apt install ./Nusa-x.y.z-amd64.deb`
+- Distro lain: `chmod +x Nusa-x.y.z-x86_64.AppImage && ./Nusa-x.y.z-x86_64.AppImage`
+- Info lagu butuh `playerctl` (`sudo apt install playerctl`).
+
 ## Build (macOS)
 
 ```sh

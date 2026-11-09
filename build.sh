@@ -5,8 +5,13 @@ cd "$(dirname "$0")"
 APP=dist/Nusa.app
 rm -rf dist && mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" dist/AppIcon.iconset
 
-swiftc -O -swift-version 5 -target arm64-apple-macos14 Sources/*.swift -o "$APP/Contents/MacOS/Nusa" \
-  -framework AppKit -framework SwiftUI -framework AudioToolbox -framework CoreAudio -framework IOKit -framework ServiceManagement -framework EventKit -framework AVFoundation -framework MediaPlayer
+# Universal: jalan di Mac Apple Silicon (arm64) & Intel (x86_64)
+FRAMEWORKS="-framework AppKit -framework SwiftUI -framework AudioToolbox -framework CoreAudio -framework IOKit -framework ServiceManagement -framework EventKit -framework AVFoundation -framework MediaPlayer"
+for ARCH in arm64 x86_64; do
+  swiftc -O -swift-version 5 -target $ARCH-apple-macos14 Sources/*.swift -o "dist/Nusa-$ARCH" $FRAMEWORKS
+done
+lipo -create dist/Nusa-arm64 dist/Nusa-x86_64 -output "$APP/Contents/MacOS/Nusa"
+rm dist/Nusa-arm64 dist/Nusa-x86_64
 
 # /usr/bin/perl jalan sebagai arm64e, helper harus punya arsitektur yang sama
 clang -O2 -dynamiclib -fobjc-arc -arch arm64 -arch arm64e -arch x86_64 -framework Foundation \
@@ -52,6 +57,7 @@ PLIST
 
 codesign --force -s - "$APP/Contents/Resources/media.dylib"
 codesign --force -s - "$APP"
+(cd dist && ditto -c -k --keepParent Nusa.app Nusa-macOS.zip)
 [ "$1" = "--no-install" ] && exit 0
 
 osascript -e 'tell application "Nusa" to quit' 2>/dev/null || true
