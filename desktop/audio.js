@@ -110,6 +110,8 @@ namespace NusaAudio {
       RECT r; if (!GetWindowRect(h, out r)) return true;
       int w = r.R - r.L, ht = r.B - r.T;
       if (w < 8 || ht < 8) return true;
+      // Tooltip & popup kecil (mis. kartu hover tab browser) bukan toolbar: abaikan
+      if (w < 120 || ht < 24) return true;
       int zl = screenW / 2 - 220, zr = screenW / 2 + 220; // area notch di tengah atas
       if (r.T > 70 || r.B <= 0 || r.R <= zl || r.L >= zr) return true;
       int cloaked; if (DwmGetWindowAttribute(h, 14, out cloaked, 4) == 0 && cloaked != 0) return true;

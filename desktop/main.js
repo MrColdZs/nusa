@@ -11,6 +11,8 @@ const W = 840, H = 440;
 let win = null, tray = null;
 let rect = { x: 0, y: 0, w: 0, h: 0 };
 let inside = false;
+/** Lagi minggir buat toolbar rekam layar / bar share (Windows). */
+let yielded = false;
 let coverTimer = null;
 
 /** Kirim ke halaman; kalau gagal (halaman lagi dimuat ulang dll.) diabaikan aja. */
@@ -53,7 +55,7 @@ function create() {
     const p = screen.getCursorScreenPoint();
     const b = win.getBounds();
     const x = p.x - b.x, y = p.y - b.y;
-    const over = x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h;
+    const over = !yielded && x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h;
     if (over === inside) return;
     inside = over;
     win.setIgnoreMouseEvents(!over);
@@ -86,15 +88,20 @@ function create() {
     audio.battery(st.name, (detail) => send('device', { name: st.name, bt: st.bt, detail: detail || 'Connected' }));
   }, (covered) => {
     // Toolbar rekam layar (Snipping Tool, Game Bar) / bar share Zoom-Teams muncul di tengah atas:
-    // Nusa minggir dulu biar toolbarnya bisa diklik, balik lagi pas toolbarnya hilang
+    // Nusa minggir dulu biar toolbarnya bisa diklik. Jendelanya NGGAK disembunyiin (hide/show = kedip);
+    // notch cuma memudar & tembus klik. Nunggu kondisinya stabil dulu biar tooltip yang lewat sebentar
+    // (mis. pas kursor di atas tab browser) nggak bikin Nusa kedip-kedip.
     clearTimeout(coverTimer);
-    if (covered) {
-      if (!win.isVisible()) return;
-      inside = false;
-      win.setIgnoreMouseEvents(true);
-      send('hover', false);
-      win.hide();
-    } else coverTimer = setTimeout(() => { if (win && !win.isDestroyed() && !win.isVisible()) win.showInactive(); }, 600);
+    if (covered === yielded) return;
+    coverTimer = setTimeout(() => {
+      yielded = covered;
+      if (covered) {
+        inside = false;
+        win.setIgnoreMouseEvents(true);
+        send('hover', false);
+      }
+      send('yield', covered);
+    }, covered ? 1200 : 1500);
   });
 
   // Riwayat clipboard (teks aja), dicek tiap detik

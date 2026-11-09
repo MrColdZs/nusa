@@ -23,6 +23,6 @@ contextBridge.exposeInMainWorld('nusa', {
   fileShow: (p) => ipcRenderer.send('file-show', p),
   fileDrag: (p) => ipcRenderer.send('file-drag', p),
   on: (channel, fn) => {
-    if (['hover', 'media', 'clip', 'open-panel', 'audio', 'device'].includes(channel)) ipcRenderer.on(channel, (_e, v) => fn(v));
+    if (['hover', 'media', 'clip', 'open-panel', 'audio', 'device', 'yield'].includes(channel)) ipcRenderer.on(channel, (_e, v) => fn(v));
   },
 });

@@ -41,6 +41,8 @@ input, select { font: inherit; color: #fff; }
 .island::before { left: calc(-1 * var(--s)); background: radial-gradient(circle at 0 100%, transparent calc(var(--s) - .5px), #000 var(--s)); }
 .island::after { right: calc(-1 * var(--s)); background: radial-gradient(circle at 100% 100%, transparent calc(var(--s) - .5px), #000 var(--s)); }
 .island.big { box-shadow: 0 10px 26px rgba(0, 0, 0, .42); }
+.island { opacity: 1; transition-property: width, height, border-radius, box-shadow, opacity; }
+.island.yield { opacity: 0; pointer-events: none; transition: opacity .35s ease; }
 .island .tint { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity .6s; }
 .island.tinted .tint { opacity: 1; }
 .content { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; }

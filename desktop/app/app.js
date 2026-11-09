@@ -64,6 +64,7 @@ function size(p = presentation()) {
 let lastKey = '', lastH = 0;
 function render(force) {
   const p = presentation();
+  $('#island').classList.toggle('yield', !!S.yielded && p !== 'flash');
   const sz = size(p);
   const island = $('#island');
   island.classList.toggle('closing', sz.h < lastH);
@@ -797,6 +798,14 @@ function idleHTML() {
 /* ================= kejadian ================= */
 
 let closeTimer = null;
+// Minggir buat toolbar lain di tengah atas (Windows): memudar & tembus klik, pop-up penting tetap muncul
+nusa.on('yield', (on) => {
+  S.yielded = on;
+  if (on) { S.hover = false; if (!S.pinned) S.expanded = false; }
+  $('#island').classList.toggle('yield', on && !S.flash);
+  render();
+});
+
 nusa.on('hover', (over) => {
   S.hover = over;
   clearTimeout(closeTimer);
