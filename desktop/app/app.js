@@ -81,8 +81,15 @@ function render(force) {
   }
   const key = p === 'expanded' ? 'x:' + S.tab : p === 'flash' ? 'f:' + S.flash.kind + S.flash.id : p;
   if (force || key !== lastKey) {
+    // Animasi masuk cuma pas pindah mode/tab. Bangun ulang di tab yang sama (mute, kalender, Rak, dll.)
+    // tanpa animasi; kalau diputar ulang tiap kali, panel kelihatan kedip.
+    const enter = key !== lastKey;
+    const scroller = enter ? null : $('#content .scroll, #content .cards, #content .shelf');
+    const keep = scroller ? scroller.scrollTop || scroller.scrollLeft : 0;
     lastKey = key;
-    $('#content').innerHTML = `<div class="view ${viewClass(p)}">${build(p)}</div>`;
+    $('#content').innerHTML = `<div class="view ${viewClass(p)}${enter ? ' enter' : ''}">${build(p)}</div>`;
+    const again = scroller && $('#content .scroll, #content .cards, #content .shelf');
+    if (again && keep) { if (again.scrollHeight > again.clientHeight) again.scrollTop = keep; else again.scrollLeft = keep; }
     afterBuild(p);
   }
   live();
@@ -836,7 +843,7 @@ nusa.on('media', (st) => {
 const mediaSig = (x) => JSON.stringify(x && [x.title, x.artist, x.album, x.art, x.hiArt, x.icon, x.app, x.playing, x.canSeek, x.noTimeline, Math.round(x.duration || 0)]);
 
 nusa.on('clip', (t) => {
-  if (!t.trim()) return;
+  if (typeof t !== 'string' || !t.trim() || S.clips[0] === t) return;
   S.clips = [t, ...S.clips.filter((c) => c !== t)].slice(0, 20);
   if (S.expanded && S.tab === 'clips') render(true);
 });

@@ -105,9 +105,14 @@ function create() {
   });
 
   // Riwayat clipboard (teks aja), dicek tiap detik
-  let lastClip = clipboard.readText();
-  setInterval(() => {
-    const t = clipboard.readText();
+  // Electron 45: clipboard.readText() ngembaliin Promise, jadi wajib ditunggu. Dulu nggak ditunggu ->
+  // tiap detik kebaca "[object Promise]" baru -> tab Clips nambah kartu & panel kedip tiap detik.
+  const readClip = async () => { try { const t = await clipboard.readText(); return typeof t === 'string' ? t : ''; } catch { return ''; } };
+  let lastClip = null;
+  readClip().then((t) => { lastClip = t; });
+  setInterval(async () => {
+    if (lastClip === null) return;
+    const t = await readClip();
     if (t && t !== lastClip) { lastClip = t; send('clip', String(t)); }
   }, 1000);
 }
