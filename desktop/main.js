@@ -11,6 +11,7 @@ const W = 840, H = 440;
 let win = null, tray = null;
 let rect = { x: 0, y: 0, w: 0, h: 0 };
 let inside = false;
+let coverTimer = null;
 
 /** Kirim ke halaman; kalau gagal (halaman lagi dimuat ulang dll.) diabaikan aja. */
 function send(channel, value) {
@@ -83,6 +84,17 @@ function create() {
     lastDevice = st.id;
     if (!changed || !(st.bt || st.ff === 3 || st.ff === 5)) return;
     audio.battery(st.name, (detail) => send('device', { name: st.name, bt: st.bt, detail: detail || 'Connected' }));
+  }, (covered) => {
+    // Toolbar rekam layar (Snipping Tool, Game Bar) / bar share Zoom-Teams muncul di tengah atas:
+    // Nusa minggir dulu biar toolbarnya bisa diklik, balik lagi pas toolbarnya hilang
+    clearTimeout(coverTimer);
+    if (covered) {
+      if (!win.isVisible()) return;
+      inside = false;
+      win.setIgnoreMouseEvents(true);
+      send('hover', false);
+      win.hide();
+    } else coverTimer = setTimeout(() => { if (win && !win.isDestroyed() && !win.isVisible()) win.showInactive(); }, 600);
   });
 
   // Riwayat clipboard (teks aja), dicek tiap detik

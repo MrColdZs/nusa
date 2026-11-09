@@ -88,6 +88,49 @@ namespace NusaAudio {
       return b.ToString();
     }
 
+    // ---- Jendela lain yang "always on top" nutup area notch (toolbar rekam Snipping Tool, bar share Zoom/Teams, dll.) ----
+    public delegate bool EnumProc(IntPtr h, IntPtr l);
+    [StructLayout(LayoutKind.Sequential)] public struct RECT { public int L; public int T; public int R; public int B; }
+    [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc p, IntPtr l);
+    [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
+    [DllImport("user32.dll")] static extern int GetWindowLong(IntPtr h, int i);
+    [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr h, out RECT r);
+    [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+    [DllImport("user32.dll")] static extern int GetSystemMetrics(int i);
+    [DllImport("dwmapi.dll")] static extern int DwmGetWindowAttribute(IntPtr h, int a, out int v, int size);
+    static readonly EnumProc checkCb = new EnumProc(Check);
+    static bool hit;
+    static int screenW;
+    static readonly string[] shell = { "nusa", "electron", "explorer", "shellexperiencehost", "startmenuexperiencehost", "searchhost", "textinputhost", "lockapp" };
+
+    static bool Check(IntPtr h, IntPtr l) {
+      if (!IsWindowVisible(h)) return true;
+      int ex = GetWindowLong(h, -20);
+      if ((ex & 8) == 0) return true; // bukan topmost
+      RECT r; if (!GetWindowRect(h, out r)) return true;
+      int w = r.R - r.L, ht = r.B - r.T;
+      if (w < 8 || ht < 8) return true;
+      int zl = screenW / 2 - 220, zr = screenW / 2 + 220; // area notch di tengah atas
+      if (r.T > 70 || r.B <= 0 || r.R <= zl || r.L >= zr) return true;
+      int cloaked; if (DwmGetWindowAttribute(h, 14, out cloaked, 4) == 0 && cloaked != 0) return true;
+      uint pid; GetWindowThreadProcessId(h, out pid);
+      string pn = "";
+      try { pn = System.Diagnostics.Process.GetProcessById((int)pid).ProcessName.ToLowerInvariant(); } catch { }
+      if (Array.IndexOf(shell, pn) >= 0) return true;
+      bool capture = pn.Contains("snip") || pn.Contains("screenclip") || pn.Contains("screensketch");
+      // Overlay transparan tembus-klik (mis. overlay GPU) & jendela selayar penuh nggak dihitung, kecuali alat rekam layar
+      bool clickThrough = (ex & 0x20) != 0, fullscreen = w >= screenW * 0.9;
+      if (capture || (!clickThrough && !fullscreen)) { hit = true; return false; }
+      return true;
+    }
+
+    static bool Covered() {
+      screenW = GetSystemMetrics(0);
+      hit = false;
+      try { EnumWindows(checkCb, IntPtr.Zero); } catch { }
+      return hit;
+    }
+
     static void ReadInput() {
       string line;
       while ((line = Console.In.ReadLine()) != null) {
@@ -112,6 +155,7 @@ namespace NusaAudio {
       string last = "";
       while (true) {
         string line = "{}";
+        string cover = Covered() ? "true" : "false";
         try {
           IMMDevice dev;
           if (en.GetDefaultAudioEndpoint(0, 1, out dev) == 0 && dev != null) {
@@ -132,9 +176,10 @@ namespace NusaAudio {
             string up = inst.ToUpperInvariant();
             bool bt = up.Contains("BTHENUM") || up.Contains("BTHHFENUM") || up.Contains("BTHLE");
             line = "{\\"vol\\":" + Math.Round(level, 3).ToString(CultureInfo.InvariantCulture) + ",\\"muted\\":" + (muted ? "true" : "false")
-              + ",\\"id\\":\\"" + Esc(curId) + "\\",\\"name\\":\\"" + Esc(name) + "\\",\\"bt\\":" + (bt ? "true" : "false") + ",\\"ff\\":" + ff + "}";
+              + ",\\"id\\":\\"" + Esc(curId) + "\\",\\"name\\":\\"" + Esc(name) + "\\",\\"bt\\":" + (bt ? "true" : "false") + ",\\"ff\\":" + ff + ",\\"cover\\":" + cover + "}";
           }
         } catch { curId = null; }
+        if (line == "{}") line = "{\\"cover\\":" + cover + "}";
         if (line != last) { Console.Out.WriteLine(line); Console.Out.Flush(); last = line; }
         Thread.Sleep(200);
       }
@@ -150,6 +195,8 @@ ${CS}
 
 let proc = null;
 let emit = () => {};
+let onCover = () => {};
+let lastCover = null;
 
 function startWindows() {
   const run = () => {
@@ -163,7 +210,12 @@ function startWindows() {
       while ((i = buf.indexOf('\n')) >= 0) {
         const line = buf.slice(0, i).trim();
         buf = buf.slice(i + 1);
-        try { const o = JSON.parse(line); emit(o.id ? o : null); } catch { /* baris rusak, lewati */ }
+        try {
+          const o = JSON.parse(line);
+          if (typeof o.cover === 'boolean' && o.cover !== lastCover) { lastCover = o.cover; onCover(o.cover); }
+          delete o.cover;
+          emit(o.id ? o : null);
+        } catch { /* baris rusak, lewati */ }
       }
     });
     proc.on('exit', () => { proc = null; setTimeout(run, 3000); });
@@ -183,8 +235,10 @@ function startLinux() {
   read();
 }
 
-function start(cb) {
+/** cb(state audio), cover(bool): ada jendela lain yang nutup area notch (toolbar rekam layar dll.) */
+function start(cb, cover) {
   emit = cb;
+  if (cover) onCover = cover;
   if (process.platform === 'win32') startWindows();
   else if (process.platform === 'linux') startLinux();
 }
