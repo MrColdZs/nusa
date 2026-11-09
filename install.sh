@@ -1,8 +1,8 @@
 #!/bin/sh
-# Pasang Nusa di Mac: curl -fsSL https://raw.githubusercontent.com/quraishrahmatulloh-source/nusa/main/install.sh | sh
+# Pasang Nusa di Mac: curl -fsSL https://raw.githubusercontent.com/MrColdZs/nusa/main/install.sh | sh
 # Diunduh lewat curl jadi macOS nggak ngeblok ("Apple could not verify") kayak file dari browser.
 set -e
-REPO="quraishrahmatulloh-source/nusa"
+REPO="MrColdZs/nusa"
 DEST="${NUSA_DEST:-/Applications}"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT

@@ -9,7 +9,7 @@ Dynamic Island buat MacBook: notch di tengah menu bar yang nampilin lagu, pengin
 Paling gampang, buka **Terminal** lalu tempel:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/quraishrahmatulloh-source/nusa/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/MrColdZs/nusa/main/install.sh | sh
 ```
 
 Script itu ngunduh `Nusa-macOS.zip` dari Release, masang ke Applications, terus buka Nusa.
@@ -25,7 +25,7 @@ Pas pertama jalan, macOS bisa minta izin (Kalender, Kamera, Bluetooth) cuma kala
 
 ### Windows 10/11
 
-Unduh `Nusa-Setup-x.y.z.exe` dari [Releases](https://github.com/quraishrahmatulloh-source/nusa/releases/latest), jalanin wizard-nya.
+Unduh `Nusa-Setup-x.y.z.exe` dari [Releases](https://github.com/MrColdZs/nusa/releases/latest), jalanin wizard-nya.
 Kalau muncul *"Windows protected your PC"*, klik **More info → Run anyway** (installer belum ditandatangani).
 
 ### Linux

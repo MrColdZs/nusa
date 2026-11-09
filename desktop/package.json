@@ -62,7 +62,7 @@
       "icon": "build/icon.png",
       "category": "Utility",
       "synopsis": "Dynamic Island for your desktop",
-      "maintainer": "Quraish Rahmatulloh <258376073+quraishrahmatulloh-source@users.noreply.github.com>",
+      "maintainer": "MrColdZs <340422942+MrColdZs@users.noreply.github.com>",
       "artifactName": "Nusa-${version}-${arch}.${ext}"
     },
     "deb": {
@@ -71,5 +71,5 @@
       ]
     }
   },
-  "homepage": "https://github.com/quraishrahmatulloh-source/nusa"
+  "homepage": "https://github.com/MrColdZs/nusa"
 }
