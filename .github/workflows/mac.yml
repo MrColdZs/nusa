@@ -1,0 +1,32 @@
+# Build Nusa.app di Mac-nya GitHub, terus ganti Nusa-macOS.zip di Release v1.0.0.
+# Jalan sendiri tiap kode Mac berubah di main, atau manual dari tab Actions.
+name: Build Mac
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['Sources/**', 'helper/**', 'assets/**', 'build.sh', '.github/workflows/mac.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  mac:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install Pillow
+      - run: sh build.sh --no-install
+      - run: ditto -c -k --keepParent dist/Nusa.app Nusa-macOS.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Nusa-macOS
+          path: Nusa-macOS.zip
+      - name: Ganti Nusa-macOS.zip di Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload v1.0.0 Nusa-macOS.zip --clobber
